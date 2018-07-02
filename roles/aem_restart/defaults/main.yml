@@ -1,0 +1,12 @@
+# Name of the AEM service
+# aem_service_name: "{{ aem_cms_service_name }}"
+# Port of the AEM instance (used for building the service URL below and polling during shutdown)
+# aem_service_port: "{{ aem_packages_port}}"
+# Desired state of the service
+aem_service_name: author
+aem_service_port: 4502
+aem_service_state: start
+# Time (in seconds) to wait for AEM to startup/shutdown
+aem_service_timeout: 1200
+# URL to poll while waiting for startup
+aem_service_login_url: "http://localhost:{{ aem_service_port }}/libs/granite/core/content/login.html"

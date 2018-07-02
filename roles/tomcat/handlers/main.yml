@@ -1,0 +1,5 @@
+- name: start Tomcat
+  environment:
+   JAVA_HOME: "{{ javalocation.stdout }}"
+  shell:  "nohup /usr/share/tomcat/bin/startup.sh; sleep 5"
+  tags: start_tomcat

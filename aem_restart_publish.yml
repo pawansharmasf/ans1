@@ -1,0 +1,6 @@
+- hosts: publish
+  roles:
+    - { role: aem_restart,
+        state: stopped,
+        aem_service_name: aem-publish,
+        aem_service_port: 4503 }

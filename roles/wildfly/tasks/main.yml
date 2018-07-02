@@ -1,0 +1,31 @@
+- name: Copy wildfly directory
+  synchronize: src={{ wildfly_src }}/wildfly-9.0.2.Final dest={{ wildfly_dest }} recursive=yes archive=no checksum=yes
+
+- name: Create Symlink to wildfly directory
+  file: src={{ wildfly_dest }}/wildfly-9.0.2.Final path={{ wildfly_dest }}/wildfly state=link
+
+- name: add group "wildfly"
+  group: name=wildfly
+
+- name: add user "wildfly"
+  user: name=wildfly group=wildfly home=/home/app/wildfly
+
+- name: copy wildfly configuration file
+  template: src=wildfly.conf.j2 dest={{ wildfly_dest }}/wildfly-9.0.2.Final/bin/init.d/wildfly.conf owner=wildfly group=wildfly
+
+- name: copy wildfly startup script
+  template: src=wildfly.sh.j2 dest=/etc/init.d/wildfly owner=root group=root mode=0755 
+
+- name: Change ownership of Wildfly installation
+  file: path=/home/app/wildfly/ owner=wildfly group=wildfly state=directory recurse=yes
+ 
+- name: Change ownership of Wildfly link
+  file: src={{ wildfly_dest }}/wildfly-9.0.2.Final path={{ wildfly_dest }}/wildfly  owner=wildfly group=wildfly state=link
+
+- name: Start wildfly service
+  service: name=wildfly enabled=yes state=started
+
+#- name: start service wilfly, in all cases
+#  systemd:
+#    name: wildfly
+#    state: started

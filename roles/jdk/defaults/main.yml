@@ -1,0 +1,4 @@
+java_dest: /usr/java
+
+# Set default install method:  source/yum
+install_method: source

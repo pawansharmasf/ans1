@@ -1,0 +1,7 @@
+cq_port: 4502
+cq_home: /home/app/author
+cq_instance: author
+logfile: /app/compaction-files/author-log.txt
+compactionfilespath: /app/compaction-files
+MEM_ARG: 6g
+

@@ -1,0 +1,5 @@
+---
+- name: Author Osgi Settings
+  hosts: author
+  roles: 
+   - author_osgi_settings

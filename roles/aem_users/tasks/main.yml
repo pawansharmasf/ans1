@@ -1,0 +1,40 @@
+- name: Add author users
+  aemuser: id={{ item.id }}
+          first_name={{ item.firstname }}
+          last_name={{ item.lastname }}
+          mail={{ item.mail }}
+          password={{ item.password }}
+          groups={{ item.groups }}
+          host=localhost
+          port=4502
+          admin_user=admin
+          admin_password=admin
+          replicate=true
+          state=present
+          version="6.2.0"
+  with_items: "{{ author_users }}"
+  when: author_users is not none
+  tags: aem_add_users
+#  no_log: True
+- name: Delete author users
+  aemuser: id={{ item.id }}
+          host=localhost
+          port=4502
+          admin_user=admin
+          admin_password={{ author_admin_pass }}
+          state=absent
+          version="6.2.0"
+  with_items: "{{ author_users_delete }}"
+  when: author_users_delete is not none
+  tags: aem_delete_users
+
+#- name: Change user password
+#  aempassword: id={{ item.id }}
+ #         host=localhost
+  #        port=4502
+   #       old_password={{ item.old_password }}
+    #      new_password={{ item.new_password }}
+ # with_items: "{{ user_passwd_change }}"
+ # tags: aem_change_password
+ # no_log: True
+

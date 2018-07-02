@@ -1,0 +1,84 @@
+
+AEM_VERSION={AEM_VERSION:-}
+
+function ipCheck() {
+
+IP=$1
+# Check if IP format is num.num.num.num / num between 0..255
+rx='([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])'
+
+if [[ "$IP" =~ ^$rx\.$rx\.$rx\.$rx$ ]]; then
+      echo "${IP} is Valid IP"
+   else
+      echo "${IP} is not a valid IP, Please re-run the program" ;exit
+   fi
+
+}
+
+####TODO-1 :- Implement logic for installing Author instance
+function installAuthor() {
+  read -p "Please enter Author IP address: " AUTHOR_IP
+# TODO : Implement an IP check function here  #ipCheck ${author_ip} 
+  ipCheck ${AUTHOR_IP} 
+
+  AEM_VERSION_PROMPT="Please select AEM version, Valid options are ${AEM_OPTIONS[@]}"
+  echo ${AEM_VERSION_PROMPT}$'\r'
+  read AEM_VERSION
+  if [[ " ${AEM_OPTIONS[@]} " =~ " ${AEM_VERSION} " ]]; then
+     echo "You have selected version : ${AEM_VERSION}"
+  else
+     echo "Invalid option, Please select a value in ${AEM_OPTIONS[@]}" ; exit ;
+  fi
+  
+#  echo "${AEM_OPTIONS[@]}"
+#  select USER_CHOICE in "${AEM_OPTIONS[@]}"  
+#  do
+#    case ${USER_CHOICE} in
+#         "6.0" )  AEM_VERSION=${USER_CHOICE} 
+#		echo ${USER_CHOICE} 
+#		break ;;
+#
+#    esac
+#   done
+
+}
+####TODO-2 :- Implement logic for installing Publish instance
+function installPublish(){
+echo "Hello"
+}
+
+####TODO-3 :- Implement logic for installing Author instance
+function installDispatcher(){
+echo "Hello"
+}
+
+function getUserChoice(){
+
+USER_PROMPT='Please Choose from as below, type in correspoding numbers from the console:'
+echo ${USER_PROMPT}
+OPTIONS=("Author" "Publish" "Dispatcher" "Quit")
+select OPT in "${OPTIONS[@]}"
+do
+    case $OPT in
+        "Author")
+            echo "You have chosen to install Author"
+            installAuthor
+	    break
+            ;;
+        "Publish")
+            echo "You have chosen to install Publish"
+	    installPublish
+	    break
+            ;;
+        "Dispatcher")
+            echo "You have chosen to install Dispatcher" 
+            installDispatcher
+	    break
+            ;;
+        "Quit")
+            break
+            ;;
+        *) echo invalid option ;;
+    esac
+done
+}

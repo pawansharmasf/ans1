@@ -1,0 +1,43 @@
+ - name: Solr core copying
+   copy: src=platform-core.tgz dest=/tmp/
+
+ - name: Solr core extract
+   shell: tar xvf platform-core.tgz
+   args:
+    chdir: "/tmp"
+
+ - name: Solr config copying to configsets
+   shell: "for locale in `ls`; do if [ -d \"$locale\" ]; then cp -rf /tmp/platform-core/* $locale; fi done"
+   args: 
+    chdir: "{{solr_dest}}/solr/server/solr/configsets"
+   become_user: solr
+
+ - name: Configure configset upconfig in zookeeper1
+   shell: "source /etc/profile ;for locale in `ls`; do if [ -d $locale ]; then sh {{solr_dest}}/solr/server/scripts/cloud-scripts/zkcli.sh -zkhost {{zklist}} -cmd  upconfig --confname $locale --confdir {{solr_dest}}/solr/server/solr/configsets/$locale/conf; fi done"
+   args:
+    chdir: "{{solr_dest}}/solr/server/solr/configsets"
+   become_user: solr
+   when: zookeeper_id == 1
+   tags: upconfig
+ 
+ - name: Configure configset linkconfig in zookeeper1
+   shell: "source /etc/profile ;for locale in `ls`; do if [ -d $locale ]; then sh {{solr_dest}}/solr/server/scripts/cloud-scripts/zkcli.sh -zkhost {{zklist}} -cmd linkconfig -collection $locale --confname $locale --confname $locale; fi done"
+   args:
+    chdir: "{{solr_dest}}/solr/server/solr/configsets"
+   become_user: solr
+   when: zookeeper_id == 1 
+   tags: linkconfig
+
+ - name: Restart Solr cluster
+   shell: "source /etc/profile ;./solr restart -cloud -s {{solr_dest}}/solr/server/solr -z {{zklist}}" 
+   args: 
+    chdir: "{{solr_dest}}/solr/bin"
+   become_user: solr
+
+ - name: Remove tmp files
+   shell: rm -rf /tmp/platform-core /tmp/platform-core.tgz
+
+ - name: sleep for 5 seconds for starting solr
+   wait_for: timeout=5
+   delegate_to: localhost
+

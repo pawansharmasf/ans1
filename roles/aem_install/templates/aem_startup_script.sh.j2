@@ -1,0 +1,38 @@
+#!/bin/bash
+#
+# /etc/r.d/init.d/author
+# chkconfig: 345 99 01
+# description: This service manages the Adobe WEM Content Management java process.
+# Source function library.
+. /etc/rc.d/init.d/functions
+AEM_ROOT={{ cq_home }}
+AEM_USER={{ cq_user_name }}
+########
+SERVER=${AEM_ROOT}/crx-quickstart
+START=${SERVER}/bin/start
+STOP=${SERVER}/bin/stop
+STATUS="${SERVER}/bin/status"
+case "$1" in
+start)
+echo -n "Starting AEM services: "
+su - ${AEM_USER} ${START}
+touch /var/lock/subsys/cq
+;;
+stop)
+echo -n "Shutting down AEM services: "
+su - ${AEM_USER} ${STOP}
+rm -f /var/lock/subsys/cq
+;;
+status)
+su - ${AEM_USER} ${STATUS}
+;;
+restart)
+su - ${AEM_USER} ${STOP}
+sleep 5s # gives the system time to shutdown
+su - ${AEM_USER} ${START}
+;;
+*)
+echo "Usage: author {start|stop|status|restart}"
+exit 1
+;;
+esac

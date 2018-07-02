@@ -1,0 +1,7 @@
+---
+- name: Tomcat Installation
+  hosts: tomcat
+  roles:
+#  - jdk
+  - tomcat
+  tags: tomcat

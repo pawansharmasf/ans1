@@ -1,0 +1,18 @@
+
+#- name: Ensure group  can run all commands
+#  lineinfile: "dest=/etc/sudoers state=present line='%{{user_group}} ALL=(ALL)  NOPASSWD: ALL'"
+
+#- set_fact:
+#    user_group: "{{ user_group | default(username) }}"
+
+- name: Add Linux user
+  user: name={{ username }} comment={{ fullname }} home={{home_dir|default(omit)}} group={{user_group|default(omit)}} createhome=yes shell=/bin/bash state=present remove=yes
+
+- authorized_key: user={{ username }} key={{ user_key }}  state=present
+  when: user_add_method == "key"
+
+- user: name={{ username }} password={{ password | password_hash('sha512') }}
+  when: user_add_method == "pass"
+
+
+

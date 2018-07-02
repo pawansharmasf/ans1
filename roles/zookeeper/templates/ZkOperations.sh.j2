@@ -1,0 +1,51 @@
+#!/bin/sh
+
+ . ./input.properties
+source $ZookeperHome_Dir/bin/zkEnv.sh
+RETVAL=0
+
+start() {
+  echo "Starting Zookeeper: "
+  cd $ZookeperHome_Dir/bin
+  sh zkServer.sh start
+}
+
+stop() {
+  echo "Stopping Zookeeper: "
+  cd $ZookeperHome_Dir/bin
+  sh zkServer.sh stop
+}
+
+restart() {
+  stop
+  start
+}
+
+status() {
+  echo "Stopping Zookeeper: "
+  cd $ZookeperHome_Dir/bin
+  sh zkServer.sh status
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  status)
+    status
+    ;;
+  restart)
+    restart
+    ;;
+  
+  *)
+    echo $"Usage: $0 {start|stop|status|restart}"
+    exit 1
+esac
+
+exit $RETVAL
+
+

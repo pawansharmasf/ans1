@@ -1,0 +1,75 @@
+
+
+
+function promptUserForOsVersion(){
+
+echo  "Please Select OS Flavour"
+select OS_FLAVOR in "${OS_FLAVORS[@]}"
+do
+    case $OS_FLAVOR in
+        "CentOS")
+            OS_FLAVOUR="CentOS"
+            break
+            ;;
+        "RedHat")
+	    OS_FLAVOUR="RedHat"
+            break
+            ;;
+        "Amazon Linux")
+	    OS_FLAVOUR="Amazon Linux"
+            break
+            ;;
+	"Ubuntu")
+	    OS_FLAVOUR="Ubuntu"
+            break
+            ;;
+        "Quit")
+	    exit 
+            ;;
+        *) echo invalid option ;;
+    esac
+done
+
+}
+
+function getOsFlavour() {
+
+OS_FLAVOUR=${OS_FLAVOUR:-}
+
+COUNT=$(find /etc -maxdepth 1 -name '*release' | wc -l)
+
+if [ "${COUNT}" -gt 0 ];then
+echo -en ${White}
+
+if  cat /etc/*release | grep ^NAME | grep -q CentOS; then
+	echo "==============================================="
+	echo -e "OS_FLAVOUR : CentOS"
+	echo "==============================================="
+	OS_FLAVOUR="CentOS"
+
+
+elif  cat /etc/*release | grep ^NAME | grep -q Red; then
+	echo "==============================================="
+	echo -e "OS_FLAVOUR : RedHat"
+	echo "==============================================="
+	OS_FLAVOUR="RedHat"
+
+
+elif cat /etc/*release | grep ^NAME | grep -q Ubuntu; then
+	echo "==============================================="
+	echo -e "OS_FLAVOUR : Ubuntu"
+	echo "==============================================="
+	OS_FLAVOUR="Ubuntu"
+
+elif cat /etc/*release | grep ^NAME | grep -q "Amazon Linux"; then
+	echo "==============================================="
+	echo -e "OS_FLAVOUR : Amazon Linux"
+	echo "==============================================="
+	OS_FLAVOUR="Amazon Linux"
+fi
+
+else
+echo "Cannot Determine OS version"
+promptUserForOsVersion
+fi
+}

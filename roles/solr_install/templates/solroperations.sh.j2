@@ -1,0 +1,87 @@
+#!/bin/sh
+ . ./input.properties
+start () {
+    echo -n "Starting solr..."
+	
+ $solrpath start -cloud -s $solrhome -z $zklist
+    
+    RETVAL=$?
+    if [ $RETVAL = 0 ]
+    then
+        echo "Solr Server is started Sucessfully."
+    else
+        echo "failed. See error code for more information."
+    fi
+    return $RETVAL
+}
+ 
+stop () {
+    
+    echo -n "Stopping solr..."
+	
+	 $solrpath stop -cloud -s $solrhome -z $zklist
+ 
+  
+    RETVAL=$?
+ 
+    if [ $RETVAL = 0 ]
+    then
+        echo "Solr Server is Stopped."
+    else
+        echo "Failed. See error code for more information."
+    fi
+    return $RETVAL
+}
+ 
+restart () {
+   echo -n "ReStarting solr..."
+	
+	$solrpath restart -cloud -s $solrhome -z $zklist
+	 
+	RETVAL=$?
+ 
+    if [ $RETVAL = 0 ]
+    then
+        echo "Solr Server is restarted Sucessfully."
+    else
+        echo "Failed. See error code for more information."
+    fi
+    return $RETVAL
+}
+ 
+status () {
+    echo -n "Status of solr..."
+	
+	$solrpath status -cloud -s $solrhome -z $zklist
+	 
+	RETVAL=$?
+ 
+    if [ $RETVAL = 0 ]
+    then
+        echo "Solr Server is Running on this Server."
+    else
+        echo "Failed. See error code for more information."
+    fi
+    return $RETVAL
+}
+ 
+case "$1" in
+    start)
+        start
+    ;;
+    status)
+        status
+    ;;
+    stop)
+        stop
+    ;;
+    restart)
+        restart
+    ;;
+    *)
+        echo $"Usage: solr {start|status|stop|restart}"
+        exit 3
+    ;;
+esac
+ 
+exit $RETVAL

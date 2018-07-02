@@ -1,0 +1,5 @@
+---
+ - name: Solr configtest creation
+   hosts: solr
+   roles:
+   - solr_configset_creation

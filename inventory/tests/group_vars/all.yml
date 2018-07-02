@@ -1,0 +1,15 @@
+## Ansible Variables specific for this environment are defined here
+
+
+## Location of apache configuration
+web_dest: /etc/httpd
+
+## Document Root of apache 
+doc_root: "/mnt/var/www/html"
+
+## IP/hostname to be configured in Apache configuration to connect to Author
+author_ip: localhost
+
+## Virtualhost name to be configured in Apache to access Author server through Apache
+
+## Virtualhost name, alias etc to be configured in Apache for acessing Publish

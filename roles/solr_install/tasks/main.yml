@@ -1,0 +1,40 @@
+---
+
+ - name: Create target Directory if it not exists
+   file: path={{ solr_dest }} state=directory mode=0755
+
+ - name: Get solr tarfile name
+   set_fact: 
+    solr_tarfile: "{{latest_solr_tarfile}}"
+   when: solr_tarfile is not defined 
+
+ - name: Solr tar file copying
+   copy: src={{ local_repo }}/{{solr_tarfile}} dest={{solr_dest}}
+
+ - name: Extract solr tarfile to tmp
+   shell: tar -zxvf {{solr_dest}}/{{solr_tarfile}} -C /tmp/
+
+ - name: Find solr directory name
+   shell: "echo {{solr_tarfile}} | head -1 | rev | cut -d. -f2- | rev"
+   register: solr_dir
+
+ #- name: Create solr  link
+ #  file: src={{solr_dest}}/{{solr_dir.stdout}} path={{solr_dest}}/solr state=link
+
+ - name: Copy solr installer script
+   shell: "cp /tmp/{{solr_dir.stdout}}/bin/install_solr_service.sh {{solr_dest}}"
+
+ - name: Copy startup scripts
+   template: src={{item.src}} dest={{item.dest}} mode={{item.mode}} owner=solr group=solr
+   with_items:
+    - { src: "input.properties.j2", dest: "{{solr_dest}}/input.properties", mode: "0644" }  
+    - { src: "solroperations.sh.j2", dest: "{{solr_dest}}/solroperations.sh", mode: "0755" }  
+
+ - name: Run solr installer script
+   shell: "source /etc/profile; ./install_solr_service.sh  {{solr_dest}}/{{solr_tarfile}} -i {{solr_dest}}"
+   args:
+    chdir: "{{solr_dest}}"  
+
+ - name: Change ownership to solr user
+   shell: "chown -R solr: {{ solr_dest }}/solr/"
+

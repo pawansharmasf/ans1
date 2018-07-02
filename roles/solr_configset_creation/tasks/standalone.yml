@@ -1,0 +1,6 @@
+- name: Create solr collection in standalone mode
+  shell: "source /etc/profile; ./solr create -c {{configset_name}}"
+  args: 
+   chdir: "{{solr_dest}}/solr/bin"
+  become: yes
+  become_user: solr

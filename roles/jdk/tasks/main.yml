@@ -1,0 +1,7 @@
+---
+ - include: source_install.yml
+   when: install_method == 'source'
+
+ - include: yum_install.yml
+   when: install_method == 'yum'
+

@@ -1,0 +1,6 @@
+---
+ - name: jdk installation
+   hosts: all
+
+   roles:
+   - jdk

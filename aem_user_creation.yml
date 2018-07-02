@@ -1,0 +1,6 @@
+- name: AEM Users
+  hosts: author
+  roles:
+  - aem_users
+  tags:
+  - aem_users

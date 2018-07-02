@@ -1,0 +1,13 @@
+---
+- name: Getting groups list from environment
+  hosts: author
+  tasks:
+
+   - name: Populating Groups List
+     local_action: "shell aem_scripts/get_groups.sh {{ ansible_host }} {{env}}"
+     tags: create
+
+#   - name: Populating Users List
+#     local_action: "shell aem_scripts/get_user.sh {{ ansible_host }} {{env}} '{{ vault_login_pass }}'"
+#     tags: delete
+

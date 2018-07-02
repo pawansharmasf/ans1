@@ -1,0 +1,62 @@
+- name: Create target Directory if it not exists
+  file: path={{ author_home }} state=directory mode=0755
+
+- name: add group "author"
+  group: name=author
+
+- name: add user "author"
+  user: name=author group=author home={{ author_home }}
+
+- name: copy jar file
+  copy: src={{ local_repo }}/{{ aem_jarfile }} dest={{ author_home }}/{{ aem_jarfile }} owner=author group=author
+
+- name: copy licence file
+  template: src=license.properties.j2 dest={{ author_home }}/license.properties owner=author group=author
+
+- stat: path={{ author_home }}/crx-quickstart
+  register: author_quickstart
+
+- name: Find java location
+  shell: "bash -lc 'which java'"
+  when: author_quickstart.stat.exists == False
+  register: javalocation
+  become: true
+
+- name: author unpack
+  shell: "{{ javalocation.stdout }} -jar {{author_home}}/{{ aem_jarfile }} -unpack"
+  args: 
+   chdir: "{{ author_home }}"
+  when: author_quickstart.stat.exists == False
+  register: author_unpacked
+
+- name: Create install Directory if it not exists
+  file: path={{ author_home }}/crx-quickstart/install state=directory mode=0755 owner=author group=author
+
+- name: Copy config file1
+  template: src=org.apache.jackrabbit.oak.plugins.blob.datastore.FileDataStore.config dest={{ author_home }}/crx-quickstart/install/ force=no
+
+- name: Copy config file2
+  template: src=org.apache.jackrabbit.oak.plugins.segment.SegmentNodeStoreService.config dest={{ author_home }}/crx-quickstart/install/ force=no
+  when: '"standby" not in author_runmode'  ### Do not need to be copied to Cold standby author
+
+- name: Copy Start file template
+  template: src=start.j2 dest={{ author_home }}/crx-quickstart/bin/start owner=author group=author
+
+- name: Change ownership of author installation
+  file: dest={{ author_home }} owner=author group=author state=directory recurse=yes
+  #when: author_unpacked.changed
+  #when: author_quickstart.stat.exists == True and author_unpacked == True
+
+- name: Create tmp Directory for author
+  file: path={{ author_home }}/tmp state=directory mode=0755 owner=author group=author
+
+- name: copy author startup script
+  template: src=author_startup_script.sh.j2 dest=/etc/init.d/author owner=root group=root mode=0755
+  tags: copy_author_script
+
+#- name: copy author logrotate script
+#  template: src=logrotate.sh.j2 dest=/etc/cron.daily/author-logrorate owner=root group=root mode=0755
+
+#- name: Start author service 
+#  service: name=author enabled=yes state=started sleep=10
+

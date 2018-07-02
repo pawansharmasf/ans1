@@ -1,0 +1,19 @@
+
+
+function checkoutFrameworkCode() {
+
+
+if [ -d  "${__dir}/bin/code/" ]; then
+ echo "Cleaning up code directory"
+ (rm -rf ${__dir}/bin/code/*)
+ (rm -rf ${__dir}/bin/code/.git)
+fi
+
+echo "Checking out framework code"
+if [ ! -d  "${__dir}/bin/code/" ]; then
+ mkdir -p "${__dir}/bin/code/" 
+fi
+git config --global http.sslVerify false
+(cd ${__dir}/bin/code && ansible-playbook ${__dir}/bin/initialize.yml)
+
+}

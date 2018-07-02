@@ -1,0 +1,8 @@
+---
+- name: Content Migration
+  hosts: author
+  tasks:
+
+   - name: Package Migration
+     local_action: "shell aem_scripts/content.release1.sh {{ ansible_host }} {{env}} 'admin' {{ newsource }} {{ dest }} {{ name }} \"{{ filters }}\" {{ replicate }}"
+

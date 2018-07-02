@@ -1,0 +1,31 @@
+- name: Restart the Author service
+  shell: "sudo service cq5 restart"
+  when: '"ams_" in env'
+  tags: restart_author
+
+- name: Restart the Lb Author service
+  shell: "sudo service cq62 restart"
+  when: '"lb_" in env'
+  tags: restart_author
+
+- name: Start the Author Service
+  shell: "sudo service cq5 start"
+   when: '"ams_" in env'
+   tags: start_author
+
+- name: Restart the Lb Author service
+  shell: "sudo service cq62 start"
+  when: '"lb_" in env'
+  tags: start_author
+
+- name: Stop the Author Service
+  shell: "sudo service cq5 stop"
+  when: '"ams_" in env'
+  tags: stop_author
+
+- name: stop the Lb Author service
+  shell: "sudo service cq62 stop"
+  when: '"lb_" in env'
+  tags: stop_author
+
+

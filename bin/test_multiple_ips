@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+IPS_ARRAY=${IPS_ARRAY:-}
+read -p "Please enter IP's" IPS
+
+
+for IP in ${IPS}
+do
+echo ${IP}
+IPS_ARRAY+="${IP} "
+#echo ${IPS_ARRAY}
+done
+
+
+for entry in ${IPS_ARRAY[@]}
+do
+echo "Entry is: ${entry}"
+done

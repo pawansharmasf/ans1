@@ -1,0 +1,31 @@
+---
+# - name: stop solr
+#   shell: /etc/init.d/solr stop
+# - set_fact: 
+#    zookeeper_ips: ""
+#   tags: start_solr_cloud
+# - set_fact:
+#    zookeeper_ips: "{{zookeeper_ips}}{{item.IP}}:2181,"
+#   with_items: 
+#   - "{{zookeeper_config_servers}}"
+#   tags: start_solr_cloud
+   
+ - name: stop solr
+   shell: "/etc/init.d/solr stop"
+   ignore_errors: yes
+
+ - name: sleep for 5 seconds for stopping solr
+   wait_for: timeout=5
+   delegate_to: localhost
+
+ - name: Remove init.d script
+   file: path=/etc/init.d/solr state=absent
+   tags: remove_initd_script
+
+ - name: Start solr in cloud mode
+   shell: "source /etc/profile ;./solr start -cloud -s {{solr_dest}}/solr/server/solr -z {{zklist}}" 
+   args: 
+    chdir: "{{solr_dest}}/solr/bin"
+   become: yes
+   become_user: solr
+   tags: start_solr_cloud

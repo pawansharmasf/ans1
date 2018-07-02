@@ -1,0 +1,82 @@
+- name: Install Apache webserver
+  yum:
+    name: httpd
+    state: latest 
+
+
+- name: Create  directories if not existing
+  file: dest={{web_dest}}/{{item}} state=directory
+  with_items: 
+  - vhost
+  - conf
+  - conf.d
+  - conf.modules.d
+
+- name: Copy files of "conf" directory
+  template: src={{ item }} dest={{web_dest}}/conf/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+  - ../templates/conf/*.j2
+  tags: conf
+
+- name: Copy dispatcher common conf files
+  template: src={{ item }} dest={{web_dest}}/conf/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+  - ../templates/conf/dispatcher/*.j2
+  tags: dispatcher
+
+## Copy author-related dispatcher configuration to webservers(author) ##
+- name: Copy dispatcher author conf files
+  template: src={{ item }} dest={{web_dest}}/conf/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+  - ../templates/conf/dispatcher/author/*.j2
+  when: author_vhost is defined
+  tags: dispatcher
+
+## Copy publish-related configuration to webservers(publish) ##
+- name: Copy dispatcher publish conf files
+  template: src={{ item }} dest={{web_dest}}/conf/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+  - ../templates/conf/dispatcher/publish/*.j2
+  tags: dispatcher
+
+- name: Copy conf.modules.d files
+  template: src={{ item }} dest={{web_dest}}/conf.modules.d/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+  - ../templates/conf.modules.d/*.j2
+  tags: conf.modules.d
+
+- name: Copy conf.d files
+  template: src={{ item }} dest={{web_dest}}/conf.d/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+  - ../templates/conf.d/*.j2
+  tags: conf.d
+
+- name: Copy dispatcher modules needed
+  copy: src=../templates/modules/mod_dispatcher.so dest={{web_dest}}/modules/mod_dispatcher.so 
+
+- name: Create Document_root Directory if not exists
+  file: dest={{ doc_root }} state=directory owner=apache group=apache mode=0755
+
+- name: Dynamic configuration  for "vhost" domains
+  template: src=vhost/vhost_template.conf.j2  dest={{web_dest}}/vhost/{{ item.name }}.conf
+  with_items:
+  - "{{ vhosts }}"
+  when: vhosts is defined
+  tags: vhosts
+
+- name: Author vhost template
+  template: src=vhost/author_vhost_template.conf.j2  dest={{web_dest}}/vhost/{{ author_vhost }}.conf
+  when: author_vhost is defined
+  tags: author vhost
+
+- name: Copy other vhost related configuration files
+  template: src={{item.src}} dest={{item.dest}}
+  with_items:
+   - { src: "vhost/expires.conf.j2", dest: "{{web_dest}}/vhost/expires.conf" }  
+   - { src: "vhost/deflate.conf.j2", dest: "{{web_dest}}/vhost/deflate.conf" }  
+   - { src: "vhost/security.conf.j2", dest: "{{web_dest}}/vhost/security.conf" }  
+
+- name: Restart httpd service
+  service: name=httpd state=restarted enabled=yes
+  when: restart_httpd == "yes"
+  tags: restart_httpd

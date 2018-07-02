@@ -1,0 +1,3 @@
+#user_group: sape_infra
+#password: '$1$SomeSalt$UqddPX3r4kH3UL5jq5/ZI'
+user_add_method: "pass"

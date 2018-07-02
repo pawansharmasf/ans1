@@ -1,0 +1,29 @@
+
+
+function displayUpdateOptions() {
+
+echo  "Please select from below the Items to update for ${AEM_ENV_NAME}"
+
+select UPDATE_OPTION in "${UPDATE_OPTIONS[@]}"
+do
+    case ${RUN_MODE} in
+        "Dispatcher")
+            updateDispatcher
+            break
+            ;;
+        "Author")
+            echo "Coming Soon...."
+            break
+            ;;
+        "Publish")
+			echo "Coming Soon...."
+            break
+            ;;
+		"Quit")
+            break
+            ;;
+        *) echo invalid option ;;
+    esac
+done
+
+}

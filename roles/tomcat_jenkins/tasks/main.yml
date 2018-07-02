@@ -1,0 +1,153 @@
+---
+
+    - name: add group
+      group: name={{ tomcat_username }}
+
+    - name: add user
+      user: name={{ tomcat_username }} group={{ tomcat_username }} home=/{{ tomcat_directory }} create_home=yes
+      become: True
+      become_method: sudo
+
+
+    - name: Get tar file name
+      set_fact:
+        tomcat_tar_name: "{{ tomcat_src | basename }}"
+
+   # - local_action: copy content={{ tomcat_tar_name }} dest=~/roles/tomcat/defaults/main.yml
+    - name: Download Tomcat
+      get_url: url={{ tomcat_src }}.tar.gz dest=/{{ tomcat_directory }}/
+
+   # - name: Set name
+    #  set_fact:
+     #    tomcat_tar_final: "{{ tomcat_tar_name | basename }}"
+      #   command: "echo $tomcat_tar_final"
+
+    - name: extract war file
+      command: "tar -xvf /{{ tomcat_directory }}/{{ tomcat_tar_name }}.tar.gz -C /{{ tomcat_directory }}/"
+
+    - name: Configure Tomcat server
+      template: src=server.xml dest=/{{ tomcat_directory }}/{{ tomcat_tar_name  }}/conf/
+     # notify: restart tomcat
+
+    - name: Configure Tomcat users
+      template: src=tomcat-users.xml dest=/{{ tomcat_directory }}/{{ tomcat_tar_name  }}/conf/
+     # notify: restart tomcat
+
+
+    - name: change ownership
+      file: path=/{{ tomcat_directory }}/{{ tomcat_tar_name  }} owner={{ tomcat_username}} group={{ tomcat_username}} state=directory recurse=yes
+
+    - name: giving group the ownership
+      command: "sudo chgrp -R {{ tomcat_username }} /{{ tomcat_directory }}/{{ tomcat_tar_name  }}"
+
+ #   - name: change permission for conf
+    - file:
+        path: /{{ tomcat_directory }}/{{ tomcat_tar_name  }}/bin
+        state: touch
+        mode: "g+rx"
+
+#    - name: Install Tomcat init script
+#      copy: src=tomcat-initscript.sh dest=/etc/init.d/tomcat mode=0755
+
+
+    - name: deploy iptables rules
+      template: src=iptables-save dest=/etc/sysconfig/iptables
+      when: "ansible_os_family == 'RedHat' and ansible_distribution_major_version == '6'"
+      notify: restart iptables
+
+    - name: permission for manager
+      template: src=context.xml dest=/{{ tomcat_directory }}/{{ tomcat_tar_name  }}/webapps/manager/META-INF
+   #   notify: restart tomcat
+
+
+
+    - name: downloading jenkins
+      get_url: url=https://updates.jenkins-ci.org/download/war/{{jenkins_version}}/jenkins.war dest=/{{ tomcat_directory }}/{{ tomcat_tar_name  }}/webapps/ force=yes timeout=500
+   
+    - name: Copying jenkins file
+      copy:
+        src: ./jenkins
+        dest: /etc/sysconfig/
+ 
+    - name: Setting java path to be used by Jenkins
+      lineinfile: dest=/etc/sysconfig/jenkins regexp='^JENKINS_JAVA_CMD' line="JENKINS_JAVA_CMD=\"/usr/java/jdk/bin/java\""
+   
+    - name: Jenkin-Plugin
+      include_vars: inventory-template/jenkins_plugins.yml
+   
+
+
+    #- name: Copying jar file
+    #  copy: src=inventory-template/jenkins-cli.jar dest=/opt/jenkins-cli.jar
+
+    - name: start tomcat
+      shell: "/usr/bin/nohup /{{ tomcat_directory }}/{{ tomcat_tar_name  }}/bin/startup.sh; sleep 60"
+      become: true
+   
+    - name: downlaoding jenkins-cli
+      get_url: url=http://localhost:8080/jenkins/jnlpJars/jenkins-cli.jar  dest=/opt/ force=yes timeout=500
+
+    - name: Enabling Anonymous access
+      shell: "sed -i 's/<denyAnonymousReadAccess>true/<denyAnonymousReadAccess>false/' /root/.jenkins/config.xml"
+      tags: enable_anonymous
+
+    - shell: mkdir -p /root/.jenkins/init.groovy.d
+ 
+    - name: Adding init groovy script to skip setup wizard
+      shell: "echo  '#!groovy
+
+import jenkins.model.*
+
+import hudson.util.*;
+
+import jenkins.install.*;
+
+def instance = Jenkins.getInstance()
+
+def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+instance.setAuthorizationStrategy(strategy)
+instance.save()
+
+instance.setInstallState(InstallState.INITIAL_SETUP_COMPLETED)' > /root/.jenkins/init.groovy.d/basic-security.groovy"
+
+    - shell: chown -R root:root /root/.jenkins/init.groovy.d
+
+    - name: start tomcat
+      shell: "/usr/bin/nohup /{{ tomcat_directory }}/{{ tomcat_tar_name  }}/bin/shutdown.sh; sleep 60"
+      become: true
+  
+    - name: start tomcat
+      shell: "/usr/bin/nohup /{{ tomcat_directory }}/{{ tomcat_tar_name  }}/bin/startup.sh; sleep 60"
+      become: true
+
+
+
+    - name: List plugins
+      shell: "{{ java_dest }}/jdk/bin/java -jar /opt/jenkins-cli.jar -s http://localhost:8080/jenkins  list-plugins --username admin --password `cat /root/.jenkins/secrets/initialAdminPassword` | cut -f 1 -d ' '"
+      register: plugins_installed
+
+
+    - name: create /tmp/jenkins_ps.tmp
+      file:
+        path: "/tmp/jenkins_ps.tmp"
+        state: touch
+
+    - name: Install/update plugins
+      shell: "{{ java_dest }}/jdk/bin/java -jar /opt/jenkins-cli.jar  -s http://localhost:8080/jenkins install-plugin {{ item }} --username admin --password `cat /root/.jenkins/secrets/initialAdminPassword`"
+      when: plugins_installed.changed and plugins_installed.stdout.find('{{ item }}') == -1
+      with_items: "{{ plugins }}" 
+      ignore_errors: yes
+
+    - name: Get jenkins pass
+      shell: "cat /root/.jenkins/secrets/initialAdminPassword"
+      register: jenkins_pass
+
+    - name: Store jenkins pass
+      local_action: "copy content={{ jenkins_pass.stdout }} dest=/tmp/jenkins_ps.tmp"
+
+
+   
+    - name: start tomcat
+      shell: "/usr/bin/nohup /{{ tomcat_directory }}/{{ tomcat_tar_name  }}/bin/startup.sh; sleep 5"
+      become: true
+

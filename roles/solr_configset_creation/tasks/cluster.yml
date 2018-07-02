@@ -1,0 +1,17 @@
+---
+- name: Create folder for configset creation
+  file: path="{{solr_dest}}/solr/server/solr/configsets/{{configset_name}}" state=directory mode=0755 owner=solr group=solr
+
+- name: Copy example config files
+  shell: "cp -rf {{solr_dest}}/solr/example/files/conf {{solr_dest}}/solr/server/solr/configsets/{{configset_name}}/"
+  become: yes
+  become_user: solr
+
+- name: Create solr collection
+  shell: "source /etc/profile; ./solr create_collection -c {{configset_name}} -d {{solr_dest}}/solr/server/solr/configsets/{{configset_name}}/conf -rf 2 "
+  args: 
+   chdir: "{{solr_dest}}/solr/bin"
+  become: yes
+  become_user: solr
+  when: ( zookeeper_id == "1" and solr_type == "cluster" )
+

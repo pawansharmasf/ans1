@@ -1,0 +1,21 @@
+<VirtualHost *:80>
+ServerName {{author_vhost}}
+{% if author_vhost_alias is defined %}ServerAlias {{ author_vhost_alias }} {% endif %}
+
+#DocumentRoot Path
+DocumentRoot {{ doc_root }}
+
+#Custom Logs
+CustomLog logs/{{author_vhost}}_access.log custom
+ErrorLog logs/{{author_vhost}}_error.log
+
+
+#Dispatcher Handler
+<Directory {{ doc_root }}>
+        <IfModule disp_apache2.c>
+                SetHandler dispatcher-handler
+                ModMimeUsePathInfo On
+        </IfModule>
+</Directory>
+</VirtualHost>
+

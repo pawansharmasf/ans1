@@ -1,0 +1,8 @@
+- include: start_aem.yml
+  when: aem_service_state == 'start'
+
+- include: stop_aem.yml
+  when: aem_service_state == 'stop'
+
+- include: restart_aem.yml
+  when: aem_service_state == 'restart'

@@ -1,0 +1,53 @@
+#- name: delete home dir for symlink of tomcat
+#  shell: rm -fr /usr/share/tomcat
+
+- name: add tomcat group
+  group: name={{ tomcat_user_name }}
+  tags: install_tomcat
+
+- name: add tomcat user
+  user: name={{ tomcat_user_name }} group={{ tomcat_user_name }} home=/usr/share/tomcat
+  notify: start Tomcat
+  tags: install_tomcat
+
+- name: Get tar file name
+  set_fact:
+   tomcat_jarfile_name: "{{ tomcat_src | basename }}"
+
+- name: copy jar file
+  copy: src={{ tomcat_src }} dest={{ tomcat_dest }}/{{ tomcat_jarfile_name }}
+
+#- name: Copy tomcat directory
+ # synchronize: src={{ tomcat_src }}  dest={{ tomcat_dest }} recursive=yes archive=no checksum=yes
+ # tags: install_tomcat
+
+- name: Find folder name
+  shell: "basename {{ tomcat_jarfile_name }} .tar.gz"
+  register: tomcatdir
+
+#- name: Get file name
+#  set_fact:
+#   tomcat_jarfile_name_sym: "{{ tomcat_jarfile_name tar.gz | basename }}"
+
+- name: Extract tarfile
+  command: "tar -zxf {{tomcat_dest}}/{{tomcat_jarfile_name}} -C {{tomcat_dest}}"
+
+- name: Create Symlink to install directory
+  file: src={{ tomcat_dest }}/{{ tomcatdir.stdout }} path=/usr/share/tomcat1 state=link
+  register: link_created
+  tags: install_tomcat
+
+- name: Find java
+  shell: "bash -lc 'which java'"
+  when: link_created.changed 
+  register: javalocation
+
+
+- name: Change ownership of Tomcat installation
+  file: path=/usr/share/tomcat/ owner={{ tomcat_user_name }} group={{ tomcat_user_name }} state=directory recurse=yes
+  tags: install_tomcat
+
+- name: start Tomcat
+  shell:  "/usr/bin/nohup /usr/share/tomcat/bin/startup.sh; sleep 5"
+  become: true
+  become_user: "{{ tomcat_user_name }}"

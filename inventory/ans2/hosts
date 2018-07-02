@@ -1,0 +1,9 @@
+[web]
+dis1 ansible_host=10.150.19.36 ansible_user=dis1 ansible_ssh_pass="redhat" ansible_become=true
+
+[author]
+a1 ansible_host=10.150.19.36 ansible_user=a1 ansible_ssh_pass="redhat" ansible_become=true
+
+[publish]
+p1 ansible_host=10.150.19.36 ansible_user=p1 ansible_ssh_pass="redhat" ansible_become=true
+

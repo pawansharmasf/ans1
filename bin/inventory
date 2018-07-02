@@ -1,0 +1,17 @@
+
+function loadInventory() {
+
+    AEM_VERSION_OPTIONS=("6.0" "6.1" "6.2" "6.3")
+    AEM_INSTANCE_OPTIONS=("Author" "Publish" "Dispatcher" "Quit")
+    YES_NO_OPTIONS=("Yes" "No" "Quit") 
+    FRAMEWORK_RUN_MODE=("Create new inventory" "Setup Jenkins and GIT repo for ansible" "Setup GIT repo for ansible" "Quit")
+    UPDATE_OPTIONS=("Dispatcher" "Author" "Publish" "Quit")
+    OS_FLAVORS=("CentOS" "RedHat" "Amazon Linux" "Ubuntu" "Quit")
+    UPDATE_VALUES=("DISPATCHER_IPS" "DISPATCHER_HOSTNAMES" "DISPATCHER_SSH_USERS" "DISPATCHER_PASSWDS")
+    UPDATE_VALUES1=("AUTHOR_IPS" "AUTHOR_HOSTNAMES" "AUTHOR_SSH_USERS" "AUTHOR_PASSWDS")
+    UPDATE_VALUES2=("PUBLISH_IPS" "PUBLISH_HOSTNAMES" "PUBLISH_SSH_USERS" "PUBLISH_PASSWDS")
+    SELECT_JDK=("JDK_1.0.131" "JDK_1.0.171" "JDK_1.0.172" "Quit")
+    SELECT_tomcat=("tomcat_7" "tomcat_8.0" "tomcat_8.5" "tomcat_9")
+
+
+}

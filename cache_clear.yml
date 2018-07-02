@@ -1,0 +1,10 @@
+---
+- name: Clearing dispatcher cache
+  hosts: web
+  tasks:
+
+   - name: clearing dispatcher cache
+     local_action: "shell aem_scripts/cache.sh {{ ansible_host }} {{CACHEPATH}}"
+     tags: cache_clear
+
+

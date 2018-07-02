@@ -1,0 +1,68 @@
+---
+ - name: Create Directory structure
+   file: dest={{java_dest}} state=directory recurse=yes
+
+# - name: Get tarfile name for 64bit
+#   set_fact: 
+#    jdk_tarfile: "{{latest_jdk_tarfile_x64}}"
+#   when: ( jdk_file_path is not defined and ansible_architecture == "x86_64" ) 
+
+# - name: Get tarfile name for 32bit
+#   set_fact: 
+#    jdk_tarfile: "{{latest_jdk_tarfile_x86}}"
+
+#   when: ( jdk_file_path is not defined and ansible_architecture != "x86_64" ) 
+
+# - name: Copy tarfile from repo to destination
+#   copy: src={{local_repo}}/{{jdk_tarfile}} dest={{ java_dest }}
+#   when: jdk_file_path is not defined
+ - name: "Download jdk"
+   command: "wget -q -O {{jdk_download_path}} --no-check-certificate --no-cookies --header 'Cookie: oraclelicense=accept-securebackup-cookie' {{jdk_download_url}} creates={{jdk_download_path}}"
+   when: jdk_file_path is not defined
+
+ - name:  Get jar file name from te jdk path
+   set_fact:
+    jdk_tarfile: "{{jdk_download_path | basename }}"
+   when: jdk_file_path is not defined
+
+ - name: copy tarfile from repo to destination
+   copy: src={{jdk_download_path}} dest={{ java_dest }}
+   when: jdk_file_path is not defined
+
+ - name: Get jar file name from the userdefined path
+   set_fact:
+    jdk_tarfile: "{{jdk_file_path | basename }}"   
+   when: jdk_file_path is defined
+
+ - name: Copy tarfile from repo to destination
+   copy: src={{jdk_file_path}} dest={{ java_dest }}
+   when: jdk_file_path is defined
+
+ - name: Extract tarfile
+   command: "tar -zxf {{java_dest}}/{{jdk_tarfile}} -C {{java_dest}} "
+
+ - name: Find folder name
+   shell: "tar -tf {{java_dest}}/{{jdk_tarfile}} | head -1"
+   register: javadir
+   
+ - name: change ownership
+   file: path={{java_dest}}/{{ javadir.stdout }} owner=root group=root state=directory recurse=yes
+
+ - name: Create "jdk" symlink
+   file: src={{ java_dest }}/{{ javadir.stdout }} path={{ java_dest }}/jdk state=link
+
+
+
+ - name: Set java_home and path
+   template: src=java.sh dest=/etc/profile.d/java.sh mode=0755
+   tags: set_java_home
+
+# - name: Execute java_home script
+#   shell: /etc/profile.d/java.sh
+
+ - name: Make Java available for system
+   command: 'alternatives --install "/usr/bin/java" "java" "{{ java_dest }}/jdk/bin/java" 2000'
+
+
+# - name: source
+  # shell: " source /etc/profile"

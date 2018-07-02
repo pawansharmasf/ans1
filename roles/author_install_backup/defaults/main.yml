@@ -1,0 +1,7 @@
+author_port: 4502
+author_home: /home/app/author
+author_xmx: 4096m
+author_runmode: "nosamplecontent"
+aem_customername: Day Training
+aem_license: 16c35d55-6a3d-8a48-986c-9d1be7ebbf70
+aem_jarfile: AEM_6.3_Quickstart.jar

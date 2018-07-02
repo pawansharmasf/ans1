@@ -1,0 +1,13 @@
+## This file contains all the globally declared variables. These variables can be accessed by all hosts/environments
+
+local_repo: /app
+
+latest_jdk_tarfile_x86: "jdk-8u131-linux-i586.tar.gz"
+latest_jdk_rpm_x86: "jdk-8u144-linux-i586.rpm"
+latest_jdk_tarfile_x64: "jdk-8u151-linux-x64.tar.gz"
+latest_jdk_rpm_x64: "jdk-8u144-linux-x64.rpm"
+
+latest_solr_tarfile: "solr-6.4.2.tgz"
+latest_zookeeper_tarfile: "zookeeper-3.4.10.tar.gz"
+
+env: "{{ inventory_dir | basename }}"

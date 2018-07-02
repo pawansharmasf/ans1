@@ -1,0 +1,99 @@
+####TODO-1: Add the logic for ansible installation here based on the OS_FLAVOUR
+
+
+function installAnsibleForCentOS(){
+
+	yum -y install epel-release
+	yum -y install ansible git
+	yum -y install dos2unix
+
+}
+
+function installAnsibleForRedhat(){
+
+## Add steps for installing ansible on RedHat System
+
+#	yum -y install epel-release
+	rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	yum -y install ansible git
+	yum -y install dos2unix
+}
+
+function installAnsibleForAmazon(){
+
+## Add steps for installing ansible on Amazon Linux System
+
+	yum -y install wget epel-release git 
+	pip install --prefix /usr ansible
+	pip install ansible
+	yum -y install dos2unix
+}
+
+function installAnsibleForUbuntu(){
+
+# Add steps for installing ansible on Ubuntu System
+
+     apt-get -y  install ansible
+     apt-get -y  install git 
+     apt-get -y  install dos2unix
+
+}
+
+function install() {
+
+echo "Proceeding for Ansible installation"
+
+echo ${OS_FLAVOUR}      
+
+if [ "${OS_FLAVOUR}" != " " ];then
+       case ${OS_FLAVOUR} in
+       "CentOS" ) installAnsibleForCentOS ;;
+       "RedHat" ) installAnsibleForRedhat ;;
+       "Ubuntu" ) installAnsibleForUbuntu ;;
+       "Amazon Linux" ) installAnsibleForAmazon ;;
+        * ) echo "This OS flavor is not supported !! Exiting install process " ; exit ;;
+	esac
+else 
+       	echo "Sorry, We are unable to determine the OS flavour, exiting install process"
+	exit ;
+   
+fi
+
+
+}
+
+function verifyAnsibleInstallation() {
+
+ansible --version > /dev/null 2>&1; [ "$?" = 0 ] && \
+echo "Ansible is successfully installed & version is:" $(ansible --version | awk -F " " 'NR==1{print $2}') \
+|| (echo "Did not find any ansible installation , Exiting installation process" && exit;)
+
+}
+function installAnsible() {
+
+      echo "This framework needs ansible to be installed on this system 
+      Please type [Y/y] if you want to proceed with ansible installation 
+      or type [N/n] if ansible is already installed on this system"
+      
+      echo "****************" 
+      read -p "Do you wish to install this program?" yn
+      case $yn in
+        [Yy]* ) install ;;
+        [Nn]* ) echo "Assuming ansible is already installed on this system" ;;
+        * ) echo "Invalid Input, Please answer Y/y  or N/n";;
+      esac
+	
+      verifyAnsibleInstallation
+
+
+}
+
+function preInstallChecks() {
+
+echo -en ${LightCyan}
+ansible --version > /dev/null 2>&1; [[ "$?" -eq 0 ]] && (echo -e "${White}${INFO_ANSIBLE_EXISTS}") || (echo "Did not find any ansible installation" && installAnsible;)
+
+
+}
+
+

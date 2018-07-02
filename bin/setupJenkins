@@ -1,0 +1,143 @@
+###
+
+function getUserJenkinsInfo(){
+
+	read -p "Do you already have a jenkins that can be used? [Y/N]: " J_REPLY
+	echo    # (optional) move to a new line
+	if [[ $J_REPLY =~ ^[Yy] ]]
+	then
+		read -p "Enter the Jenkins URL : " JENKINS_URL
+		read -p "Enter the admin username for Jenkins: " JENKINS_USER
+		read -p "Enter the admin password for Jenkins: " JENKINS_PASS
+ 		read -p "Enter full path of jdk source tarball in this server which is needed for seting up jenkins: " JDK_SRC_PATH	
+		return 0
+		
+	else
+		read -p "Proceed to install a new Jenkins to local  [ Yes to Install / No to enter remote server details to install Jenkins ]  : " JENKINS_SERVER_LOCAL
+		if [[ $JENKINS_SERVER_LOCAL =~ ^[Nn] ]]
+                then
+                       read -p "Enter IP of server where jenkins need to installed :" JENKINS_IP
+                       read -p "Enter ssh user: " JENKINS_SSH_USER
+                       read -p "Enter ssh pass: " JENKINS_SSH_PASS
+		fi
+
+ 	read -p "Enter full path of jdk source tarball in this server which will be used to install JAVA in the Jenkins Server: " JDK_SRC_PATH	
+ 	read -p "Enter directory in jenkins server to which java would be installed [ Default : /usr/java ] : " JDK_DEST_DIR
+	JDK_DEST_DIR=${JDK_DEST_DIR:-/usr/java}
+
+	installJenkins
+
+        fi
+}
+
+function installJenkins()
+{
+
+if [[ $JENKINS_SERVER_LOCAL =~ ^[Yy] ]]
+then
+	JENKINS_IP=localhost
+	set -x
+	ansible-playbook -i inventory-template/jenkins_inventory_template  jdk.yml -c local  -v -e "jdk_file_path=$JDK_SRC_PATH" -e "java_dest=$JDK_DEST_DIR"
+	ansible-playbook -i inventory-template/jenkins_inventory_template  install_jenkins.yml -c local -v -e "java_dest=$JDK_DEST_DIR"
+	set +x
+else
+	cp inventory-template/jenkins_inventory_template inventory-template/jenkins_inventory
+	sed -i "s/JENKINS_IP/$JENKINS_IP/g" inventory-template/jenkins_inventory
+	sed -i "s/JENKINS_SSH_USER/$JENKINS_SSH_USER/g" inventory-template/jenkins_inventory
+	sed -i "s/JENKINS_SSH_PASS/$JENKINS_SSH_PASS/g" inventory-template/jenkins_inventory
+	set -x
+	ansible-playbook -i inventory-template/jenkins_inventory  jdk.yml  -v -e "jdk_file_path=$JDK_SRC_PATH" -e "java_dest=$JDK_DEST_DIR"
+	ansible-playbook -i inventory-template/jenkins_inventory   install_jenkins.yml  -v -e "java_dest=$JDK_DEST_DIR"
+	set +x
+fi
+
+## Storing initial admin password
+JENKINS_USER=admin
+JENKINS_PASS=`cat /tmp/jenkins_ps.tmp`
+}
+
+function setupansiblejobs()
+{
+setupandpushGit
+
+set -x
+
+if [[ $J_REPLY =~ ^[Yy] ]]
+then
+	
+	# Install JAVA to tmp to use jenkins API
+	ansible-playbook -i inventory-template/jenkins_inventory  jdk.yml  -v -e "jdk_file_path=$JDK_SRC_PATH" -e "java_dest=/tmp" -c local
+
+	# Install plugins required for ansible related jobs
+	ansible-playbook -i inventory-template/jenkins_inventory  setup_jenkins_for_ansible.yml  -v -e "jenkins_url=$JENKINS_URL" -e "java_dest=/tmp" -e "jenkins_admin_pass=$JENKINS_PASS" -c local
+
+	# Removing temporarily installed jdk
+	rm -rf /tmp/jdk 
+
+	# Run the ansible playbook that will setup ansible related jobs for jenkins
+	ansible-playbook -i inventory-template/jenkins_inventory_template  jenkins_jobs.yml -c local -e "project_name=$PROJECT_NAME" -e "ANSIBLE_REPO_URL=$ANSIBLE_REPO_URL" -e "ANSIBLE_REPO_DIR=$ANSIBLE_REPO_DIR" -e "ANSIBLE_REPO_BRANCH=$ANSIBLE_REPO_BRANCH" -e "ANSIBLE_REPO_USER=$ANSIBLE_REPO_USER" -e "ANSIBLE_REPO_PASS=$ANSIBLE_REPO_PASS" -e "jenkins_url=$JENKINS_URL" -e "jenkins_admin_user=$JENKINS_USER" -e "jenkins_password=$JENKINS_PASS" -e "ENCRYPT=$ENCRYPT"
+
+else
+	# Run the ansible playbook that will setup ansible related jobs for jenkins
+	ansible-playbook -i inventory-template/jenkins_inventory_template  jenkins_jobs.yml -c local -e "project_name=$PROJECT_NAME" -e "ANSIBLE_REPO_URL=$ANSIBLE_REPO_URL" -e "ANSIBLE_REPO_DIR=$ANSIBLE_REPO_DIR" -e "ANSIBLE_REPO_BRANCH=$ANSIBLE_REPO_BRANCH" -e "ANSIBLE_REPO_USER=$ANSIBLE_REPO_USER" -e "ANSIBLE_REPO_PASS=$ANSIBLE_REPO_PASS" -e "jenkins_url=http://$JENKINS_IP:8080" -e "jenkins_admin_user=$JENKINS_USER" -e "jenkins_password=$JENKINS_PASS" -e "ENCRYPT=$ENCRYPT"
+
+fi
+
+set +x
+
+
+}
+
+function setupandpushGit()
+{
+
+# Getting info about the project's ansible repository
+read -p "Enter the Clone URL for Ansible GIT Repo of the project ( without username & pass ): " ANSIBLE_REPO_URL
+read -p "Enter GIT Repo User: " ANSIBLE_REPO_USER
+read -p "Enter GIT Repo Password: " ANSIBLE_REPO_PASS
+
+# Removing http & https from git url
+ANSIBLE_REPO_URL=`echo $ANSIBLE_REPO_URL | sed -e 's/^http:\/\///g' -e 's/^https:\/\///g'`
+
+# URLencoding values
+ANSIBLE_REPO_USER=`urlencode $ANSIBLE_REPO_USER`
+ANSIBLE_REPO_PASS=`urlencode $ANSIBLE_REPO_PASS`
+
+REPO_NAME=`basename $ANSIBLE_REPO_URL .git`
+git clone https://$ANSIBLE_REPO_USER:$ANSIBLE_REPO_PASS@"${ANSIBLE_REPO_URL}" /tmp/$REPO_NAME
+
+read -p "Enter Directory path in ${ANSIBLE_REPO_URL} where ansible code need to be added [Default: 'Root of Repo']: " ANSIBLE_REPO_DIR
+
+ANSIBLE_REPO_DIR=${ANSIBLE_REPO_DIR:-.}
+mkdir -p /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR
+
+read -p "Enter branch to be used to commit files [Default : master] : " ANSIBLE_REPO_BRANCH
+ANSIBLE_REPO_BRANCH=${ANSIBLE_REPO_BRANCH:-master}
+
+# Adding only files that is needed in the new project
+( cd /tmp/$REPO_NAME && git checkout $ANSIBLE_REPO_BRANCH && git pull && cd - )
+cp -pr *  /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/
+if [ -e ".vault" ];then
+	ENCRYPT=Y
+	cp -pr .vault  /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/
+else
+	ENCRYPT=N
+
+fi
+
+rm -rf  /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/inventory-template/jenkins* /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/inventory-template/jenkins-cli.jar /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/install_jenkins.yml /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/setup_jenkins_for_ansible.yml /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/jenkins_jobs.yml /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/roles/jenkins_jobs
+
+# Pushing ansible related files to the project repository
+cd /tmp/$REPO_NAME
+git add *
+if [ -e ".vault" ];then
+	git add .vault
+fi
+git commit -am "Initial commit from ansible-framework script"
+git push origin $ANSIBLE_REPO_BRANCH
+cd -
+#rm -rf /tmp/$REPO_NAME
+
+}
+
+

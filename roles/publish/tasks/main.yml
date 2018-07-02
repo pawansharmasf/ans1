@@ -1,0 +1,30 @@
+- name: Restart the publish service
+  shell: "sudo service cq5 restart"
+  when: '"ams_" in env'
+  tags: restart_publish
+
+- name: Restart the Lb Publish service
+  shell: "sudo service cq62 restart"
+  when: '"lb_" in env'
+  tags: restart_publish
+
+    
+- name: start the publish service
+  shell: "sudo service cq5 start"
+  when: '"ams_" in env'
+  tags: start_publish
+
+- name: start the Lb Publish service
+  shell: "sudo service cq62 start"
+  when: '"lb_" in env'
+  tags: start_publish
+
+- name: stop the publish service
+  shell: "sudo service cq5 stop"
+  when: '"ams_" in env'
+  tags: stop_publish
+
+- name: stop the Lb Publish service
+  shell: "sudo service cq62 stop"
+  when: '"lb_" in env'
+  tags: stop_publish

@@ -1,0 +1,65 @@
+- name: Create target Directory if it not exists
+  file: path={{ cq_home }} state=directory mode=0755
+
+- name: add CQ group
+  group: name={{ cq_user_name }}
+
+- name: add CQ user 
+  user: name={{ cq_user_name }} group={{ cq_user_name }} home={{ cq_home }}
+
+- name: Get Jar file name
+  set_fact: 
+   aem_jarfile_name: "{{ aem_jarfile_path | basename }}"
+
+- name: copy jar file
+  copy: src={{ aem_jarfile_path }} dest={{ cq_home }}/{{ aem_jarfile_name }} owner={{ cq_user_name }} group={{ cq_user_name }}
+
+- name: copy licence file
+  template: src=license.properties.j2 dest={{ cq_home }}/license.properties owner={{ cq_user_name }} group={{ cq_user_name }}
+
+- stat: path={{ cq_home }}/crx-quickstart
+  register: aem_quickstart
+
+- name: Get already installed java location
+  shell: "bash -lc 'which java'"
+  when: aem_quickstart.stat.exists == False
+  register: javalocation
+  become: true
+
+- name: aem unpack
+  shell: "{{ javalocation.stdout }} -jar {{cq_home}}/{{ aem_jarfile_name }} -unpack"
+  args: 
+   chdir: "{{ cq_home }}"
+  when: aem_quickstart.stat.exists == False
+  register: aem_unpacked
+
+- name: Create install Directory if it not exists
+  file: path={{ cq_home }}/crx-quickstart/install state=directory mode=0755 owner={{ cq_user_name }} group={{ cq_user_name }}
+
+- name: Copy config file1
+  template: src=org.apache.jackrabbit.oak.plugins.blob.datastore.FileDataStore.config dest={{ cq_home }}/crx-quickstart/install/ force=no
+
+- name: Copy config file2
+  template: src=org.apache.jackrabbit.oak.plugins.segment.SegmentNodeStoreService.config dest={{ cq_home }}/crx-quickstart/install/ force=no
+  when: '"standby" not in cq_runmode'  ### Do not need to be copied to Cold standby author
+
+- name: Copy Start file template
+  template: src=start.j2 dest={{ cq_home }}/crx-quickstart/bin/start owner={{ cq_user_name }} group={{ cq_user_name }}
+  tags: start_file
+
+- name: Change ownership of aem installation
+  file: dest={{ cq_home }} owner={{ cq_user_name }} group={{ cq_user_name }} state=directory recurse=yes
+
+- name: Create tmp Directory for aem
+  file: path={{ cq_home }}/tmp state=directory mode=0755 owner={{ cq_user_name }} group={{ cq_user_name }}
+
+- name: copy aem startup script
+  template: src=aem_startup_script.sh.j2 dest=/etc/init.d/{{cq_startup_script_name}} owner=root group=root mode=0755
+  tags: copy_aem_script
+
+#- name: copy aem logrotate script
+#  template: src=logrotate.sh.j2 dest=/etc/cron.daily/author-logrorate owner=root group=root mode=0755
+
+- name: Start aem service 
+  systemd: name={{cq_startup_script_name}} state=started 
+

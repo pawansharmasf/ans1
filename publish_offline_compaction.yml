@@ -1,0 +1,5 @@
+---
+- name: Install AEM Author
+  hosts: publish
+  roles:
+   - offline_compaction

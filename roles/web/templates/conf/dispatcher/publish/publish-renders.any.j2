@@ -1,0 +1,12 @@
+{% set count = 0 %}
+{% for item in publish_renderer_ip %}
+/{{count}}
+ {
+ /hostname "{{ item }}"
+ /port "4503"
+ /timeout "10000"
+ }
+{% set count = count + 1 %}
+{% endfor %}
+
+

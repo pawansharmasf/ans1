@@ -1,0 +1,27 @@
+---
+ - name: Set rpmfile location for 64bit
+   set_fact: 
+    rpmfile: "{{latest_jdk_rpm_x64}}"
+   when: ( jdk_file_path is not defined and ansible_architecture == "x86_64" )
+
+ - name: Get rpmfile name for 32bit
+   set_fact: 
+    rpmfile: "{{latest_jdk_rpm_x86}}"
+   when: ( jdk_file_path not defined and ansible_architecture != "x86_64" ) 
+
+ - name: Copy rpmfile from repo to destination
+   copy: src={{local_repo}}/{{rpmfile}} dest=/tmp/
+   when: jdk_file_path is not defined
+
+ - name: Get rpm file name from the userdefined path
+   set_fact:
+    rpmfile: "{{jdk_file_path | basename }}"
+   when: jdk_file_path is defined
+
+ - name: Copy tarfile from repo to destination
+   copy: src={{jdk_file_path}} dest=/tmp/
+   when: jdk_file_path is defined
+
+
+ - name: Install rpm
+   yum: name=/tmp/{{rpmfile}} state=present 

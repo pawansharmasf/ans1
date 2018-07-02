@@ -1,0 +1,14 @@
+/0
+  {
+  /glob "{{author_ip}}"
+  /type "allow"
+  }
+{% set count = 1 %} {% for item in publish_renderer_ip %}
+/{{count}}
+ {
+ /glob "{{ item }}"
+ /type "allow"
+ }
+{% set count = count + 1 %}
+{% endfor %}
+

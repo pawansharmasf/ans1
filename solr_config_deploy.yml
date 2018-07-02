@@ -1,0 +1,7 @@
+---
+ - name: Solr configuration deployment
+   hosts: solr
+   roles:
+   - solr_config_deploy
+
+

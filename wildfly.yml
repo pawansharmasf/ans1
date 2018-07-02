@@ -1,0 +1,6 @@
+---
+- name: Wildfly Installation
+  hosts: wildfly_servers
+  roles:
+  - wildfly
+

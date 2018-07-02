@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Logrotate Script for AEM6
+
+LOG_DIR_AUTHOR="{{author_home}}/crx-quickstart/logs"
+
+compress_delete(){
+        # Compression des fichiers de logs déjà rotaté par l'application CQ
+        find $1 -type f -iregex '.*\.log\.[0-9]+-[0-9]+-[0-9]+$' -exec gzip -9 {} \;
+        # Suppression des fichiers de logs de plus d'un mois
+        find $1 -type f -mtime +30 -delete
+}
+
+if [ -d "$LOG_DIR_AUTHOR" ]; then
+        compress_delete $LOG_DIR_AUTHOR
+fi
+
+exit 0
+

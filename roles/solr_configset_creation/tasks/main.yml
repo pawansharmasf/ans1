@@ -1,0 +1,7 @@
+---
+ - include: cluster.yml
+   when: solr_type == 'cluster'
+
+ - include: standalone.yml
+   when: solr_type == 'standalone'
+

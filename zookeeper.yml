@@ -1,0 +1,6 @@
+---
+ - name: zookeeper installation
+   hosts: zookeeper
+   roles:
+   - {role: 'jdk', when: install_jdk is defined }
+   - zookeeper

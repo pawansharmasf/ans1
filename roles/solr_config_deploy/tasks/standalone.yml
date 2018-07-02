@@ -1,0 +1,24 @@
+ - name: Solr core copying
+   copy: src=platform-core.tgz dest=/tmp/
+
+ - name: Solr core extract
+   shell: tar xvf platform-core.tgz
+   args:
+    chdir: "/tmp"
+
+ - name: Solr config copying to configsets
+   shell: "for locale in `ls`; do if [ -d \"$locale\" ]; then cp -rf /tmp/platform-core/* $locale; fi done"
+   args: 
+    chdir: "/var/solr/data"
+   become_user: solr
+
+ - name: Restart standalone solr
+   shell: "/etc/init.d/solr restart"
+
+ - name: Remove tmp files
+   shell: rm -rf /tmp/platform-core /tmp/platform-core.tgz
+
+ - name: sleep for 5 seconds for starting solr
+   wait_for: timeout=5
+   delegate_to: localhost
+

@@ -1,0 +1,2 @@
+solr_dest: /opt
+install_method: source

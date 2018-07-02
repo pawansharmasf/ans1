@@ -1,0 +1,602 @@
+#!/bin/bash
+
+#DISPATCHER_IP=${DISPATCHER_IP:-}
+AUTHOR_IP=${AUTHOR_IP:-}
+PUBLISH_IP=${PUBLISH_IP:-}
+AEM_ANSIBLE_USER_PASSWORD=${AEM_ANSIBLE_USER_PASSWORD:-}
+HOST_VARS_DIR=${HOST_VARS_DIR:-}
+GROUP_VARS_DIR=${GROUP_VARS_DIR:-}
+DUMMY_WEB_FILE_NAME=${DUMMY_WEB_FILE_NAME:-}
+HOSTS_DIR=${HOSTS_DIR:-}
+HOSTS_FILE=${HOSTS_FILE:-}
+DISPATCHER_NUM=${DISPATCHER_NUM:-}
+AUTHOR_NUM=${AUTHOR_NUM:-}
+PUBLISH_NUM=${PUBLISH_NUM:-}
+VAULT=$(which ansible-vault)
+function getUserInputsForUpdateMode() {
+
+HOST_VARS_DIR="${__dir}/inventory/${AEM_ENV_NAME}/host_vars"
+GROUP_VARS_DIR="${__dir}/inventory/${AEM_ENV_NAME}/group_vars"
+DUMMY_WEB_FILE_NAME=project-env-dispatcher
+HOSTS_DIR="${__dir}/inventory/${AEM_ENV_NAME}"
+HOSTS_FILE="${__dir}/inventory/${AEM_ENV_NAME}/hosts"
+
+# Reading vhost configuration from user
+declare -a DISPATCHER_VHOST_NAMES
+declare -a DISPATCHER_VHOST_ALIASES
+read -p "Do you want to encrypt ssh passwords using  ansible vault ? [Y/N] : " ENCRYPT
+ENCRYPT=${ENCRYPT:-Y}
+if [[ $ENCRYPT =~ ^[Yy] ]]
+	then
+	ENCRYPT=Y
+	if [ -e "vault.yml" ];then
+		echo "Using existing file vault.yml, to store encrypted passwords"
+		read  -p  "Enter the ansible vault password for opening the file, vault.yml : " ENCRYPT_PASS
+		ENCRYPT_PASS=${ENCRYPT_PASS:-PASS}
+		echo "$ENCRYPT_PASS" > .vault
+		$VAULT decrypt --vault-password-file .vault vault.yml || true
+	else
+		echo "New file vault.yml will be used, to store encrypted passwords"
+		read  -s -p "Enter the vault password to be used for opening vault.yml  : " ENCRYPT_PASS
+		ENCRYPT_PASS=${ENCRYPT_PASS:-PASS}
+		echo "$ENCRYPT_PASS" > .vault
+		echo
+	fi
+	
+fi
+read -p " Please provide the number of virtualhosts for Dispatcher: [ Leave blank for none ]" DISPATCHER_VHOST_NUM
+DISPATCHER_VHOST_NUM=${DISPATCHER_VHOST_NUM:-0}
+for (( count = 0; count < $DISPATCHER_VHOST_NUM ; count++ )); do
+	read -p "Please provide virtualhost name $((count+1)) :" DISPATCHER_VHOST_NAME
+	DISPATCHER_VHOST_NAMES[$count]=$DISPATCHER_VHOST_NAME
+
+	read -p "Please enter virtualhost aliases for $DISPATCHER_VHOST_NAME  seperated by space  [blank for none] :" DISPATCHER_VHOST_ALIAS
+	DISPATCHER_VHOST_ALIASES[$count]=$DISPATCHER_VHOST_ALIAS
+
+	if [ -z "$DISPATCHER_VHOST_NAME" ];then
+		echo "ERROR => DISPATCHER_VHOST_NAME cannot be empty" ; exit
+	fi
+done
+
+read -p "Please enter the Author virtualhost name [blank for skipping author virtualhost setup ] : " DISPATCHER_AUTHOR_VHOST
+if [ ! -z "$DISPATCHER_AUTHOR_VHOST" ];then
+	read -p "Please enter the Author virtualhosts's aliasname  [blank if no alias is required ] : " DISPATCHER_AUTHOR_VHOST_ALIAS
+fi
+
+## Reading Dispatcher server information from user
+read -p "Please enter Dispatcher's Document_root to be used [Default: /mnt/var/www/html ] : " DOC_ROOT
+DOC_ROOT=${DOC_ROOT:-/mnt/var/www/html}
+
+declare -a DISPATCHER_IPS
+declare -a DISPATCHER_HOSTNAMES
+declare -a DISPATCHER_SSH_USERS
+declare -a DISPATCHER_PASSWDS
+declare -a DISPATCHER_KEY_PATHS
+read -p "Please provide the number of Dispatcher servers: " DISPATCHER_NUM
+for (( count = 0; count < $DISPATCHER_NUM ; count++ )); do
+
+	read -p "Please provide Dispatcher $((count+1)) IP: "  DISPATCHER_IP
+	
+	DISPATCHER_IPS[$count]=$DISPATCHER_IP
+	if [ -z "$DISPATCHER_IP" ];then
+		echo "ERROR => DISPATCHER_IP cannot be empty" ; exit
+	fi
+	read -p "Please provide Dispatcher $((count+1)) HOSTNAME: "  DISPATCHER_HOSTNAME
+
+	DISPATCHER_HOSTNAMES[$count]=$DISPATCHER_HOSTNAME
+	if [ -z "$DISPATCHER_HOSTNAME" ];then
+		echo "ERROR => DISPATCHER_HOSTNAME cannot be empty" ; exit
+	fi
+        read -p "Please provide Dispatcher $((count+1)) SSH_USER: "  DISPATCHER_SSH_USER
+        DISPATCHER_SSH_USERS[$count]=$DISPATCHER_SSH_USER
+
+        if [ -z "$DISPATCHER_SSH_USER" ];then
+                echo "ERROR => DISPATCHER_SSH_USER cannot be empty" ; exit
+        fi
+	read -p "Please provide Dispatcher $((count+1)) ssh Password [Enter Blank to ask for ssh key]:  "  DISPATCHER_PASSWD
+
+	DISPATCHER_KEY_PATHS[$count]="0"
+	DISPATCHER_KEY_PATH="0"
+
+	if [ -z "$DISPATCHER_PASSWD" ];then
+		read -p "Please provide the path for Dispatcher $((count+1)) ssh key(.pem file) for $DISPATCHER_SSH_USER  [ Enter Blank if keys will be setup manually ] : "  DISPATCHER_KEY_PATH
+	fi
+
+	DISPATCHER_KEY_PATHS[$count]=${DISPATCHER_KEY_PATH:-0}
+
+	if [[ $ENCRYPT == Y ]] && [[ ! -z $DISPATCHER_PASSWD ]]
+	then
+        	echo "${DISPATCHER_HOSTNAME}_Pass : $DISPATCHER_PASSWD" >> vault.yml
+		DISPATCHER_PASSWD="{{ ${DISPATCHER_HOSTNAME}_Pass }}"
+	fi
+	DISPATCHER_PASSWDS[$count]=$DISPATCHER_PASSWD
+
+done
+
+
+## Reading Author server information from user
+declare -a AUTHOR_IPS
+declare -a AUTHOR_HOSTNAMES
+declare -a AUTHOR_SSH_USERS
+declare -a AUTHOR_PASSWDS
+declare -a AUTHOR_KEY_PATHS
+read -p "Please provide the number of Author servers: " AUTHOR_NUM
+
+for (( count = 0; count < $AUTHOR_NUM ; count++ )); do
+
+
+	read -p "Please provide AUTHOR $((count+1)) IP: "  AUTHOR_IP
+	AUTHOR_IPS[$count]=$AUTHOR_IP
+
+	if [ -z "$AUTHOR_IP" ];then
+		echo "ERROR => AUTHOR_IP cannot be empty" ; exit
+	fi
+
+
+	read -p "Please provide Author $((count+1)) HOSTNAME: "  AUTHOR_HOSTNAME
+
+	AUTHOR_HOSTNAMES[$count]=$AUTHOR_HOSTNAME
+
+	if [ -z "$AUTHOR_HOSTNAME" ];then
+		echo "ERROR => AUTHOR_HOSTNAME cannot be empty" ; exit
+	fi
+
+
+        read -p "Please provide Author $((count+1)) SSH_USER: "  AUTHOR_SSH_USER
+	AUTHOR_SSH_USERS[$count]=$AUTHOR_SSH_USER
+
+        if [ -z "$AUTHOR_SSH_USER" ];then
+                echo "ERROR => AUTHOR_SSH_USER cannot be empty" ; exit
+        fi
+
+
+	read -p "Please provide Author $((count+1)) ssh Password [Enter Blank to ask for ssh key]:  "  AUTHOR_PASSWD
+	AUTHOR_KEY_PATHS[$count]="0"
+	AUTHOR_KEY_PATH="0"
+
+	if [ -z "$AUTHOR_PASSWD" ];then
+			read -p "Please provide the path for Author $((count+1)) ssh key(.pem file) for $AUTHOR_SSH_USER  [ Enter Blank if keys will be setup manually ] : "  AUTHOR_KEY_PATH
+	fi
+	AUTHOR_KEY_PATHS[$count]=${AUTHOR_KEY_PATH:-0}
+
+	#if [[ $ENCRYPT =~ ^[Yy] ]] && [[ ! -z $AUTHOR_PASSWD ]]
+	if [[ $ENCRYPT == Y ]] && [[ ! -z $AUTHOR_PASSWD ]]
+	then
+        	echo "${AUTHOR_HOSTNAME}_Pass : $AUTHOR_PASSWD" >> vault.yml
+		AUTHOR_PASSWD="{{ ${AUTHOR_HOSTNAME}_Pass }}"
+	fi
+	AUTHOR_PASSWDS[$count]=$AUTHOR_PASSWD
+
+done
+
+
+
+## Reading Publish server information from user
+declare -a PUBLISH_IPS
+declare -a PUBLISH_HOSTNAMES
+declare -a PUBLISH_SSH_USERS
+declare -a PUBLISH_PASSWDS
+declare -a PUBLISH_KEY_PATHS
+
+read -p "Please provide the number of Pubish servers: "  PUBLISH_NUM
+
+for (( count = 0; count < $PUBLISH_NUM ; count++ )); do
+
+
+        read -p "Please provide PUBLISH $((count+1)) IP: "  PUBLISH_IP
+        PUBLISH_IPS[$count]=$PUBLISH_IP
+
+        if [ -z "$PUBLISH_IP" ];then
+                echo "ERROR => PUBLISH_IP cannot be empty" ; exit
+        fi
+
+
+        read -p "Please provide Pubish $((count+1)) HOSTNAME: "  PUBLISH_HOSTNAME
+        PUBLISH_HOSTNAMES[$count]=$PUBLISH_HOSTNAME
+
+        if [ -z "$PUBLISH_HOSTNAME" ];then
+                echo "ERROR => PUBLISH_HOSTNAME cannot be empty" ; exit
+        fi
+
+
+
+        read -p "Please provide Pubish $((count+1)) SSH_USER: "  PUBLISH_SSH_USER
+
+        PUBLISH_SSH_USERS[$count]=$PUBLISH_SSH_USER
+
+        if [ -z "$PUBLISH_SSH_USER" ];then
+                echo "ERROR => PUBLISH_SSH_USER cannot be empty" ; exit
+        fi
+
+	read -p "Please provide Pubish $((count+1)) ssh Password [Enter Blank to ask for ssh key]:  "  PUBLISH_PASSWD
+	if [ -z "$PUBLISH_PASSWD" ];then
+		read -p "Please provide the path for Publish $((count+1)) ssh key(.pem file) for $PUBLISH_SSH_USER  [ Enter Blank if keys will be setup manually ] : "  PUBLISH_KEY_PATH
+	fi
+	PUBLISH_KEY_PATHS[$count]=${PUBLISH_KEY_PATH:-0}
+
+	
+	if [[ $ENCRYPT == Y ]] && [[ ! -z $PUBLISH_PASSWD ]]
+	then
+        	echo "${PUBLISH_HOSTNAME}_Pass : $PUBLISH_PASSWD" >> vault.yml
+		PUBLISH_PASSWD="{{ ${PUBLISH_HOSTNAME}_Pass }}"
+	fi
+        PUBLISH_PASSWDS[$count]=$PUBLISH_PASSWD
+done
+
+
+# Removing vhost variable if no virtualhosts need to be configured.
+if [[ $DISPATCHER_VHOST_NUM == 0 ]]; then
+	sed -i  "/^vhosts:/d" "${GROUP_VARS_DIR}/all.yml"
+fi
+
+#Adding vhost variables to inventory
+for (( count = $DISPATCHER_VHOST_NUM-1; count > -1 ; count-- )); do
+
+	if [ ! -z "${DISPATCHER_VHOST_ALIASES[$count]}" ];then
+		sed -i	"/vhosts:/a\ - name: ${DISPATCHER_VHOST_NAMES[$count]}\n   alias: ${DISPATCHER_VHOST_ALIASES[$count]}" "${GROUP_VARS_DIR}/all.yml"
+	else
+		sed -i	"/vhosts:/a\ - name: ${DISPATCHER_VHOST_NAMES[$count]}" "${GROUP_VARS_DIR}/all.yml"
+	fi		
+
+
+done
+
+#Updating author_vhost
+if [ ! -z "$DISPATCHER_AUTHOR_VHOST" ];then
+	sed -i  "s/author_vhost:.*/author_vhost: \"$DISPATCHER_AUTHOR_VHOST\"/g" "${GROUP_VARS_DIR}/all.yml"
+	if [ ! -z "$DISPATCHER_AUTHOR_VHOST_ALIAS" ];then
+		sed -i  "/author_vhost:/a author_vhost_alias: \"$DISPATCHER_AUTHOR_VHOST_ALIAS\"" "${GROUP_VARS_DIR}/all.yml"
+	fi
+else
+	 sed -i  "/^author_vhost:/d" "${GROUP_VARS_DIR}/all.yml"
+fi
+
+DOC_ROOT=$(echo "$DOC_ROOT" | sed 's/\//\\\//g') # Adding escape character for the '/' in document root path
+#Adding  document root variable
+sed -i  "s/doc_root:.*/doc_root: \"$DOC_ROOT\"/g" "${GROUP_VARS_DIR}/all.yml"
+
+# Adding Webservers to inventory
+for (( count = $DISPATCHER_NUM-1; count > -1 ; count-- )); do
+
+	DISPATCHER_HOSTNAME=${DISPATCHER_HOSTNAMES[$count]}
+	DISPATCHER_KEY_PATH=${DISPATCHER_KEY_PATHS[$count]}
+	cp ${HOST_VARS_DIR}/${DUMMY_WEB_FILE_NAME}.yml ${HOST_VARS_DIR}/${DISPATCHER_HOSTNAME}.yml
+
+		sed -i	"/publish_renderer_ip:/a\ - ${PUBLISH_IPS[$count]}" "${HOST_VARS_DIR}/${DISPATCHER_HOSTNAME}.yml"
+
+	if [ -e "${HOSTS_FILE}" ];then
+		if [ -z "${DISPATCHER_PASSWDS[$count]}" ] && [ "${DISPATCHER_KEY_PATHS[$count]}" == "0" ];then	
+			sed -i "/\[web\]/a $DISPATCHER_HOSTNAME ansible_host=${DISPATCHER_IPS[$count]} ansible_user=${DISPATCHER_SSH_USERS[$count]}  ansible_become=true" "${HOSTS_FILE}"
+		elif [ "${DISPATCHER_KEY_PATH}" == "0" ];then
+			sed -i "/\[web\]/a $DISPATCHER_HOSTNAME ansible_host=${DISPATCHER_IPS[$count]} ansible_user=${DISPATCHER_SSH_USERS[$count]} ansible_ssh_pass=\"${DISPATCHER_PASSWDS[$count]}\" ansible_become=true" "${HOSTS_FILE}"
+		else
+			sed -i "/\[web\]/a $DISPATCHER_HOSTNAME ansible_host=${DISPATCHER_IPS[$count]} ansible_user=${DISPATCHER_SSH_USERS[$count]} ansible_ssh_private_key_file=\"${DISPATCHER_KEY_PATHS[$count]}\" ansible_become=true" "${HOSTS_FILE}"
+		fi
+	else
+		echo "HOSTS file not found"
+	fi
+
+done
+rm -f ${HOST_VARS_DIR}/${DUMMY_WEB_FILE_NAME}.yml
+
+# Adding Authors to inventory
+for (( count = $AUTHOR_NUM-1; count > -1 ; count-- )); do
+
+## Assuming that Author1 is the main author server
+if [ $count == 0 ]; then
+sed -i "/author_ip/ c\author_ip: ${AUTHOR_IPS[$count]}" ${GROUP_VARS_DIR}/all.yml
+fi
+        AUTHOR_HOSTNAME=${AUTHOR_HOSTNAMES[$count]}
+
+        if [ -e "${HOSTS_FILE}" ];then
+		if [ -z "${AUTHOR_PASSWDS[$count]}" ] && [ "${AUTHOR_KEY_PATHS[$count]}" == "0" ];then
+                        sed -i "/\[author\]/a $AUTHOR_HOSTNAME ansible_host=${AUTHOR_IPS[$count]} ansible_user=${AUTHOR_SSH_USERS[$count]}  ansible_become=true" "${HOSTS_FILE}"
+                elif [ "${AUTHOR_KEY_PATHS[$count]}" == "0" ];then
+                        sed -i "/\[author\]/a $AUTHOR_HOSTNAME ansible_host=${AUTHOR_IPS[$count]} ansible_user=${AUTHOR_SSH_USERS[$count]} ansible_ssh_pass=\"${AUTHOR_PASSWDS[$count]}\" ansible_become=true" "${HOSTS_FILE}"
+                else
+                        sed -i "/\[author\]/a $AUTHOR_HOSTNAME ansible_host=${AUTHOR_IPS[$count]} ansible_user=${AUTHOR_SSH_USERS[$count]} ansible_ssh_private_key_file=\"${AUTHOR_KEY_PATHS[$count]}\" ansible_become=true" "${HOSTS_FILE}"
+                fi
+        else
+                echo "HOSTS file not found"	
+        fi
+
+
+done
+
+
+
+# Adding Publish Servers to inventory
+for (( count = $PUBLISH_NUM-1; count > -1 ; count-- )); do
+
+        PUBLISH_HOSTNAME=${PUBLISH_HOSTNAMES[$count]}
+ 
+        if [ -e "${HOSTS_FILE}" ];then
+		if [ -z "${PUBLISH_PASSWDS[$count]}" ] && [ "${PUBLISH_KEY_PATHS[$count]}" == "0" ];then
+                        sed -i "/\[publish\]/a $PUBLISH_HOSTNAME ansible_host=${PUBLISH_IPS[$count]} ansible_user=${PUBLISH_SSH_USERS[$count]}  ansible_become=true" "${HOSTS_FILE}"
+                elif [ "${PUBLISH_KEY_PATHS[$count]}" == "0" ];then
+                        sed -i "/\[publish\]/a $PUBLISH_HOSTNAME ansible_host=${PUBLISH_IPS[$count]} ansible_user=${PUBLISH_SSH_USERS[$count]} ansible_ssh_pass=\"${PUBLISH_PASSWDS[$count]}\" ansible_become=true" "${HOSTS_FILE}"
+                else
+                        sed -i "/\[publish\]/a $PUBLISH_HOSTNAME ansible_host=${PUBLISH_IPS[$count]} ansible_user=${PUBLISH_SSH_USERS[$count]} ansible_ssh_private_key_file=\"${PUBLISH_KEY_PATHS[$count]}\" ansible_become=true" "${HOSTS_FILE}"
+                fi
+        else
+                echo "HOSTS file not found"
+        fi
+
+
+done
+
+# Encrpyting the ansible vault file
+if [[ $ENCRYPT == Y ]]
+then
+	$VAULT encrypt --vault-password-file .vault vault.yml
+fi
+
+dos2unix -q "${__dir}/inventory/${AEM_ENV_NAME}/group_vars"/all.yml "${__dir}/inventory/${AEM_ENV_NAME}/group_vars"/all.yml ${HOSTS_FILE} 
+dos2unix -q ${HOST_VARS_DIR}/*.yml
+
+echo "New Inventory for ${AEM_ENV_NAME} created at ${__dir}/inventory/${AEM_ENV_NAME}"
+
+}
+
+
+
+function getGenericEnvironmentData() {
+
+echo -e "${MSG_GET_ENV_NAME}"
+read AEM_ENV_NAME
+
+if [ ! -z "${AEM_ENV_NAME}" ];then
+
+    if [ ! -d "${__dir}/inventory/${AEM_ENV_NAME}" ];then
+        mkdir -p ${__dir}/inventory/${AEM_ENV_NAME}
+        cp -rf ${__dir}/inventory-template/env-template/* ${__dir}/inventory/${AEM_ENV_NAME}
+
+    else
+    echo "Environment ${AEM_ENV_NAME} already exists .  Proceeding to update this environment"
+displayUpdateOptions
+
+	 fi
+else
+echo "You have provided a wrong or empty entry, exiting install process"; exit;
+fi
+}
+
+function prepareEnvironment() {
+
+ getGenericEnvironmentData
+ getUserInputsForUpdateMode
+
+}
+
+function displayUpdateOptions() {
+# calaculating number of author,publish,dispatcher
+disp=$(sed -n '/web/,/^$/p' ${__dir}/inventory/${AEM_ENV_NAME}/hosts |wc -l)
+auth=$(sed -n '/auth/,/^$/p' ${__dir}/inventory/${AEM_ENV_NAME}/hosts |wc -l)
+pub=$(sed -n '/pub/,/^$/p' ${__dir}/inventory/${AEM_ENV_NAME}/hosts |wc -l)
+echo  "Please select from below the Items to update for ${AEM_ENV_NAME}"
+select UPDATE_OPTIONS in "${UPDATE_OPTIONS[@]}"
+do
+    case ${UPDATE_OPTIONS} in
+        Dispatcher)
+           
+	 updateDispatcher
+            break
+            ;;
+        Author)
+	  
+        updateAuthor  
+	  
+            break
+            ;;
+        Publish)
+          updatePublish
+            break
+            ;;
+         Quit)
+            break
+            ;;
+        *) echo invalid option ;;
+    esac
+done
+
+}
+
+
+
+function updateDispatcher() {
+disp=$((disp - 2))
+echo "you have this no. of dispatcher:" $disp
+
+echo "type which dispatcher you wana update:"
+read b
+echo -e "Which value you want to update in : $b"
+b=$((b+1))
+
+	select UPDATE_VALUES in "${UPDATE_VALUES[@]}"
+	do
+  
+  	case ${UPDATE_VALUES} in
+		DISPATCHER_IPS)
+		
+		a=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $2}' |cut -d '=' -f2)
+		a1=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+		#echo $a1
+		echo "your previous ip was:"$a
+		read -p "enter new ip:" ip
+		awk  '$1=="'$a1'"{$2="ansible_host='$ip'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+		
+			
+			;;
+		DISPATCHER_HOSTNAMES)
+
+		a2=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+		echo "Previous hostname is:"$a2
+		read -p "enter new hostname:" hs
+		 awk  '$1=="'$a2'"{$1="'$hs'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+		
+			;;
+		DISPATCHER_SSH_USERS)
+  		
+
+		a3=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+		#echo $a10 
+		a4=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $3}' |cut -d '=' -f2)                  
+		echo "Previous sshusername is:"$a4	
+		read -p "enter new sshuser:" sshuser
+		awk  '$1=="'$a3'" {$3="ansible_user='$sshuser'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+			;;
+		DISPATCHER_PASSWDS)
+		
+		a5=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+                #echo $a11
+                a6=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $4}' |cut -d '=' -f2)
+                echo "Previous ssh passwd:"$a6
+                read -p "enter new passwd:" passwd
+                awk  '$1=="'$a5'" {$4="ansible_ssh_pass=\"'$passwd'\""}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+
+
+			;;
+		*)
+                        echo "Sorry, I don't understand"
+                        ;;
+  	esac
+	done
+}
+
+
+
+function updateAuthor() 
+{
+auth=$((auth-2))
+echo "you have this no. of Author:"$auth
+
+echo "type which author you wana update:"
+read b
+b=$((disp+b+1))
+echo -e "Which value you want to update in this author"
+
+
+        select UPDATE_VALUES1 in "${UPDATE_VALUES1[@]}"
+        do
+
+        case ${UPDATE_VALUES1} in
+                AUTHOR_IPS)
+		
+		
+		  a=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $2}' |cut -d '=' -f2)
+        	  a1=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+  		# echo $a1
+		echo "your previous ip was:"$a
+                read -p "enter new ip:" ip
+        	awk  '$1=="'$a1'"{$2="ansible_host='$ip'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+                        ;;
+                AUTHOR_HOSTNAMES)
+		
+		
+		 a2=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+                 echo "Previous hostname:"$a2
+                 read -p "enter new hostname:" hs
+ 		 awk  '$1=="'$a2'"{$1="'$hs'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+
+                        ;;
+
+	        AUTHOR_SSH_USERS)
+
+ 		a3=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+                #echo $a10
+                a4=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $3}' |cut -d '=' -f2)
+                echo "Previous sshusername:"$a4
+                read -p "enter new sshuser:" sshuser
+                awk  '$1=="'$a3'" {$3="ansible_user='$sshuser'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+                        ;;
+               AUTHOR_PASSWDS)
+
+
+                a5=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+                #echo $a11
+                a6=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $4}' |cut -d '=' -f2)
+                echo "Previous ssh passwd:"$a6
+                read -p "enter new passwd:" passwd
+                awk  '$1=="'$a5'" {$4="ansible_ssh_pass=\"'$passwd'\""}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+			;;
+                *)
+                        echo "Sorry, I don't understand"
+                        ;;
+        esac
+        done
+
+
+}
+
+
+function updatePublish()
+{
+pub=$((pub-2))
+
+echo "you have this no. of Publish:"$pub
+
+echo "type which publish you wana update:"
+read b
+b=$((disp+auth+b+1))
+echo -e "Which value you want to update in this publish"
+
+
+        select UPDATE_VALUES2 in "${UPDATE_VALUES2[@]}"
+        do
+
+        case ${UPDATE_VALUES2} in
+                PUBLISH_IPS)
+	
+
+		a=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $2}' |cut -d '=' -f2)
+       		 a1=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+ 		#echo $a1
+		echo "your previous ip was:"$a
+                read -p "enter new ip:" ip
+        	awk  '$1=="'$a1'"{$2="ansible_host='$ip'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+
+                        ;;
+                PUBLISH_HOSTNAMES)
+ 		a2=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+                echo "Previous hostname:"$a2
+                read -p "enter new hostname:" hs
+		 awk  '$1=="'$a2'"{$1="'$hs'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+                        ;;
+
+
+                PUBLISH_SSH_USERS)
+
+		 a3=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+                #echo $a10
+                 a4=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $3}' |cut -d '=' -f2)
+               echo "Previous sshuser name :"$a4
+                 read -p "enter new sshusername:" sshuser
+                 awk  '$1=="'$a3'" {$3="ansible_user='$sshuser'"}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+
+                        ;;
+               PUBLISH_PASSWDS)
+
+		 a5=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $1}')
+                #echo $a11
+                 a6=$(sed -n "$b"p ${__dir}/inventory/${AEM_ENV_NAME}/hosts  | awk '{print $4}' |cut -d '=' -f2)
+                echo "Previous ssh passwd:"$a6
+                read -p "enter new passwd:" passwd
+                 awk  '$1=="'$a5'" {$4="ansible_ssh_pass=\"'$passwd'\""}1' ${__dir}/inventory/${AEM_ENV_NAME}/hosts > ${__dir}/inventory/${AEM_ENV_NAME}/tmp && mv -f ${__dir}/inventory/${AEM_ENV_NAME}/tmp ${__dir}/inventory/${AEM_ENV_NAME}/hosts
+
+                        ;;
+                *)
+                        echo "Sorry, I don't understand"
+                        ;;
+        esac
+        done
+
+}

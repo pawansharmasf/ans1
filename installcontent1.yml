@@ -1,0 +1,8 @@
+---
+- name: Content Installation - Target Env
+  hosts: author
+  tasks:
+
+   - name: Package Installation - Targer Env
+     local_action: "shell aem_scripts/content.install1.sh {{ ansible_host }} {{env}} 'admin' {{ newsource }} {{ dest }} {{ name }} \"{{ filters }}\" {{ replicate }}"
+

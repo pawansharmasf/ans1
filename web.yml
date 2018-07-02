@@ -1,0 +1,5 @@
+---
+- name: Web Installation
+  hosts: web
+  roles: 
+   - web

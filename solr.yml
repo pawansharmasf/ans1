@@ -1,0 +1,9 @@
+---
+ - name: Solr installation and deployment
+   hosts: solr
+   roles:
+   - {role: 'jdk', when: install_jdk is defined }
+   - {role: 'solr_install', when: install_solr is defined }
+   - {role: 'solr_cloud_start', when: ( solr_cloud_start is defined and solr_type == "cluster" ) }
+   - {role: 'solr_configset_creation', when: solr_configset_creation is defined }
+   - {role: 'solr_config_deploy', when: solr_config_deploy is defined }

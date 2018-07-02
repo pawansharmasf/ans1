@@ -1,0 +1,5 @@
+
+## IP/hostname to be configured in Apache configuration to connect to Publish . Enter multiple renderers by adding below existing one
+publish_renderer_ip:
+ - 10.150.19.36
+

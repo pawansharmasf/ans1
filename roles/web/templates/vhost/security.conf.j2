@@ -1,0 +1,27 @@
+#The Disable HTTP Methods Rewrite Rule
+RewriteEngine On
+RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK|OPTIONS|PUT)
+RewriteRule .* - [F]
+
+#Disable Etag
+FileETag None
+
+#Secure Apache Web Server from XSS Attack
+Header edit Set-Cookie ^(.*)$ ;HttpOnly;Secure
+
+
+#Secure Your Web Site from Clickjacking Attack
+Header always set X-Frame-Options SAMEORIGIN
+
+#X-XSS Protection
+Header set X-XSS-Protection "1; mode=block"
+
+
+#Disable HTTP 1.0 Protocol
+#HTTP 1.0 has security weakness related to session hijacking
+RewriteEngine On
+RewriteCond %{THE_REQUEST} !HTTP/1\.1$
+RewriteRule .* - [F]
+
+
+

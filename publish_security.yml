@@ -1,0 +1,5 @@
+---
+- name: publish security settings 
+  hosts: author
+  roles: 
+   - publish_security

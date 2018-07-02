@@ -1,0 +1,9 @@
+## This roles contains the configurations done using curl commands
+
+- name: Disable Webdev
+  local_action: "shell curl -u admin:admin 'http://{{ ansible_host }}:4502/system/console/bundles/319' --data 'action=stop' -v" 
+- name: Disable Package Manager 
+  local_action: "shell curl -u admin:admin 'http://{{ ansible_host }}:4502/system/console/bundles/337' --data 'action=stop' -v" 
+- name: Disable Json
+  local_action: "shell curl -u admin:admin 'http://{{ ansible_host }}:4502/system/console/bundles/106' --data 'action=stop' -v" 
+

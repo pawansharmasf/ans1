@@ -1,0 +1,32 @@
+<VirtualHost *:80>
+ServerName {{item.name}}
+{% if item.alias is defined %}ServerAlias {{ item.alias }} {% endif %}
+
+#DocumentRoot Path
+DocumentRoot {{doc_root}}
+
+#Custom Logs
+CustomLog logs/{{item.name}}_access.log custom
+ErrorLog logs/{{item.name}}_error.log
+LogLevel info rewrite:info
+
+#Include files
+Include vhost/expires.conf
+Include vhost/deflate.conf
+Include vhost/security.conf
+
+#######Rewrite Rules 
+RewriteEngine on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{REQUEST_URI} !^/dispatcher/invalidate.cache
+RewriteRule !/eagle/check https://%{SERVER_NAME}%{REQUEST_URI} [L,R]
+
+#Dispatcher Handler
+<Directory {{ doc_root }}>
+        <IfModule disp_apache2.c>
+                SetHandler dispatcher-handler
+                ModMimeUsePathInfo On
+        </IfModule>
+</Directory>
+</VirtualHost>
+

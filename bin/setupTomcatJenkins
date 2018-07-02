@@ -1,0 +1,212 @@
+function getUserTomcatInfo(){
+    read -p "Proceed to install a new Jenkins to local  [ Yes to Install / No to enter remote server details to install Jenkins ]  : " TOMCAT_SERVER_LOCAL
+    if [[ $TOMCAT_SERVER_LOCAL =~ ^[Yy] ]]
+    then
+            read -p "Enter IP of server where jenkins need to installed :" JENKINS_IP
+            read -p "Enter ssh user: " JENKINS_SSH_USER
+            read -p "Enter ssh pass: " JENKINS_SSH_PASS
+	else
+            read -p "Enter IP of server where jenkins need to installed :" JENKINS_IP
+            read -p "Enter ssh user: " JENKINS_SSH_USER
+            read -p "Enter ssh pass: " JENKINS_SSH_PASS
+	fi
+		
+	echo "Framework can downlaod jdk tarball for you, available jdk versions are jdk_1.0.131, jdk_1.0.171 , jdk _1.0.172"
+	read -p "Proceed to install jdk  [ Yes to give your tarfile path / No to let framework download tarfile  ]  : " jdk_user
+
+ 	if [[ $jdk_user =~ ^[Yy] ]]	
+	then        
+		  read -p "Enter full path of jdk source tarball in this server which will be used to install JAVA in the Jenkins Server: " JDK_SRC_PATH
+	else
+		select SELECT_JDK in "${SELECT_JDK[@]}"
+			do
+			    case ${SELECT_JDK} in
+    				    JDK_1.0.131)
+
+				         jdk_path=/opt/jdk-8u131-linux-x64.tar.gz
+					 jdk_url=http://download.oracle.com/otn-pub/java/jdk/8u131-b11/d54c1d3a095b4ff2b6607d096fa80163/jdk-8u131-linux-x64.tar.gz
+            					break
+            					;;
+        			    JDK_1.0.171)
+
+        				jdk_path=/opt/jdk-8u171-linux-x64.tar.gz
+                                        jdk_url=http://download.oracle.com/otn-pub/java/jdk/8u171-b11/512cd62ec5174c3487ac17c61aaa89e8/jdk-8u171-linux-x64.tar.gz
+
+       				         break
+            				;;
+        			   
+				   JDK_1.0.172)
+          				jdk_path=/opt/jdk-8u172-linux-x64.tar.gz
+                                        jdk_url=http://download.oracle.com/otn-pub/java/jdk/8u172-b11/a58eab1ec242421181065cdc37240b08/jdk-8u172-linux-x64.tar.gz
+            				break
+            				;;
+         			    Quit)
+            				break
+            				;;
+   			   
+ 			           *) echo invalid option ;;
+   					 esac
+			done
+
+	fi
+	
+	
+
+
+                  echo "which tomcat do you want to install"
+       
+                select SELECT_tomcat in "${SELECT_tomcat[@]}"
+                        do
+                            case ${SELECT_tomcat} in
+                                    tomcat_7)
+						
+						tomcat_link=https://archive.apache.org/dist/tomcat/tomcat-7/v7.0.88/bin/apache-tomcat-7.0.88
+                                                break
+                                                ;;
+                                    tomcat_8.0)
+					
+					tomcat_link=https://archive.apache.org/dist/tomcat/tomcat-8/v8.0.52/bin/apache-tomcat-8.0.52
+
+                                         break
+                                        ;;
+
+                                    tomcat_8.5)
+
+                                        tomcat_link=https://archive.apache.org/dist/tomcat/tomcat-8/v8.5.31/bin/apache-tomcat-8.5.31
+
+                                         break
+
+                                        ;;
+
+				     tomcat_9)
+                                        tomcat_link=https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.7/bin/apache-tomcat-9.0.7
+					break
+                                        ;;
+                             
+
+                                   *) echo invalid option ;;
+                                         esac
+                        done
+
+       
+	
+
+
+
+        read -p "Enter directory in jenkins server to which java would be installed [ Default : /usr/java ] : " JDK_DEST_DIR
+	read -p "Enter the jenkins war version you want to download:" jenki
+        JDK_DEST_DIR=${JDK_DEST_DIR:-/usr/java}
+
+			installTomcat
+}
+
+function installTomcat(){
+	if [[ $TOMCAT_SERVER_LOCAL =~ ^[Yy] ]]
+	then
+        JENKINS_IP=localhost
+        set -x
+
+	if [[ $jdk_user =~ ^[Yy] ]]
+        then
+		ansible-playbook -i inventory-template/jenkins_inventory_template  jdk.yml -c local  -v -e "jdk_file_path=$JDK_SRC_PATH" -e "java_dest=$JDK_DEST_DIR"
+	else
+
+		ansible-playbook -i inventory-template/jenkins_inventory_template  jdk.yml -c local  -v -e "jdk_download_path=$jdk_path" -e "java_dest=$JDK_DEST_DIR" -e "jdk_download_url=$jdk_url"
+
+	fi
+
+        ansible-playbook -i inventory-template/jenkins_inventory_template  tomcat_jenkins.yml -c local -v -e"tomcat_src=$tomcat_link"  -e "java_dest=$JDK_DEST_DIR" -e "jenkins_version=$jenki"
+        set +x
+
+else
+        #cp inventory-template/jenkins_inventory_template inventory-template/jenkins_inventory_template
+        sed -i "s/JENKINS_IP/$JENKINS_IP/g" inventory-template/jenkins_inventory_template
+        sed -i "s/JENKINS_SSH_USER/$JENKINS_SSH_USER/g" inventory-template/jenkins_inventory_template
+        sed -i "s/JENKINS_SSH_PASS/$JENKINS_SSH_PASS/g" inventory-template/jenkins_inventory_template
+        set -x
+
+	if [[ $jdk_user =~ ^[Yy] ]]
+        then
+                ansible-playbook -i inventory-template/jenkins_inventory_template  jdk.yml -c local  -v -e "jdk_file_path=$JDK_SRC_PATH" -e "java_dest=$JDK_DEST_DIR"
+        else
+
+                ansible-playbook -i inventory-template/jenkins_inventory_template  jdk.yml -c local  -v -e "jdk_download_path=$jdk_path" -e "java_dest=$JDK_DEST_DIR" -e "
+jdk_download_url=$jdk_url"
+
+        fi
+        ansible-playbook -i inventory-template/jenkins_inventory_template   tomcat_jenkins.yml  -v -e"tomcat_src=$tomcat_link" -e "java_dest=$JDK_DEST_DIR" -e "jenkins_version=$jenki"
+        set +x
+
+
+
+
+
+
+	fi
+}
+
+function setupJenkinsJobs() {
+
+	getRepoDetails
+	## Storing initial admin password
+	JENKINS_USER=admin
+	JENKINS_PASS=`cat /tmp/jenkins_ps.tmp`
+#	JENKINS_PASS=admin123
+	
+	set -x
+
+if [[ $TOMCAT_SERVER_LOCAL =~ ^[Yy] ]]
+then
+         # ansible-playbook -i inventory-template/jenkins_inventory_template  jdk.yml  -v -e "jdk_file_path=$JDK_SRC_PATH" -e "java_dest=/tmp" -c local
+
+         # Install plugins required for ansible related jobs
+#       ansible-playbook -i inventory-template/jenkins_inventory_template  setup_jenkins_for_ansible.yml  -v -e "jenkins_url=http://$JENKINS_IP:8080/jenkins/" -e "java_dest=/tmp" -e "jenkins_admin_pass=$JENKINS_PASS" -c local
+
+	# Run the ansible playbook that will setup ansible related jobs for jenkins
+	ansible-playbook -i inventory-template/jenkins_inventory_template  jenkins_jobs.yml  -c local -e "project_name=$PROJECT_NAME" -e "ANSIBLE_REPO_URL=$ANSIBLE_REPO_URL" -e "ANSIBLE_REPO_DIR=$ANSIBLE_REPO_DIR" -e "ANSIBLE_REPO_BRANCH=$ANSIBLE_REPO_BRANCH" -e "ANSIBLE_REPO_USER=$ANSIBLE_REPO_USER" -e "ANSIBLE_REPO_PASS=$ANSIBLE_REPO_PASS" -e "jenkins_url=http://$JENKINS_IP:8080/jenkins" -e "jenkins_admin_user=$JENKINS_USER" -e "jenkins_password=$JENKINS_PASS" -e "ENCRYPT=$ENCRYPT"
+else
+ # Run the ansible playbook that will setup ansible related jobs for jenkins
+        ansible-playbook -i inventory-template/jenkins_inventory_template  jenkins_jobs.yml -c local -e "project_name=$PROJECT_NAME" -e "ANSIBLE_REPO_URL=$ANSIBLE_REPO_URL" -e "ANSIBLE_REPO_DIR=$ANSIBLE_REPO_DIR" -e "ANSIBLE_REPO_BRANCH=$ANSIBLE_REPO_BRANCH" -e "ANSIBLE_REPO_USER=$ANSIBLE_REPO_USER" -e "ANSIBLE_REPO_PASS=$ANSIBLE_REPO_PASS" -e "jenkins_url=http://$JENKINS_IP:8080/jenkins" -e "jenkins_admin_user=$JENKINS_USER" -e "jenkins_password=$JENKINS_PASS" -e "ENCRYPT=$ENCRYPT"
+
+fi
+	set +x
+
+}
+
+function getRepoDetails() {
+
+# Getting info about the project's ansible repository
+read -p "Enter the Clone URL for Ansible GIT Repo of the project ( without username & pass ): " ANSIBLE_REPO_URL
+read -p "Enter GIT Repo User: " ANSIBLE_REPO_USER
+read -p "Enter GIT Repo Password: " ANSIBLE_REPO_PASS
+
+# Removing http & https from git url
+ANSIBLE_REPO_URL=`echo $ANSIBLE_REPO_URL | sed -e 's/^http:\/\///g' -e 's/^https:\/\///g'`
+
+# URLencoding values
+ANSIBLE_REPO_USER=`urlencode $ANSIBLE_REPO_USER`
+ANSIBLE_REPO_PASS=`urlencode $ANSIBLE_REPO_PASS`
+
+REPO_NAME=`basename $ANSIBLE_REPO_URL .git`
+git clone https://$ANSIBLE_REPO_USER:$ANSIBLE_REPO_PASS@"${ANSIBLE_REPO_URL}" /tmp/$REPO_NAME
+
+read -p "Enter Directory path in ${ANSIBLE_REPO_URL} where ansible code need to be added [Default: 'Root of Repo']: " ANSIBLE_REPO_DIR
+
+ANSIBLE_REPO_DIR=${ANSIBLE_REPO_DIR:-.}
+mkdir -p /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR
+
+read -p "Enter branch to be used to commit files [Default : master] : " ANSIBLE_REPO_BRANCH
+ANSIBLE_REPO_BRANCH=${ANSIBLE_REPO_BRANCH:-master}
+
+# Adding only files that is needed in the new project
+( cd /tmp/$REPO_NAME && git checkout $ANSIBLE_REPO_BRANCH && git pull && cd - )
+cp -pr *  /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/
+if [ -e ".vault" ];then
+        ENCRYPT=Y
+        cp -pr .vault  /tmp/$REPO_NAME/$ANSIBLE_REPO_DIR/
+else
+        ENCRYPT=N
+
+fi
+
+}

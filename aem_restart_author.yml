@@ -1,0 +1,3 @@
+- hosts: author
+  roles:
+  - aem_restart

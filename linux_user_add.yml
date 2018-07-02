@@ -1,0 +1,4 @@
+- name: Playbook for adding  linux users
+  hosts: all
+  roles: 
+  - linux_users

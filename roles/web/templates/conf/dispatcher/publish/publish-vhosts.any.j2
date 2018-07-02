@@ -1,0 +1,8 @@
+{% if vhosts is defined %}
+{% for vhost in vhosts %}
+"{{vhost.name}}"
+{% if vhost.alias is defined %}"{{vhost.alias| regex_replace(' ','"\n"')}}" {% endif %}
+
+{% endfor %}
+{% endif %}
+

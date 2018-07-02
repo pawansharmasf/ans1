@@ -1,0 +1,17 @@
+- name: Get already installed java location
+  shell: "bash -lc 'which java'"
+  register: javalocation
+  become: true
+
+- name: Downloading Oak run jar
+  local_action: get_url url=http://central.maven.org/maven2/org/apache/jackrabbit/oak-run/1.4.11/oak-run-1.4.11.jar dest=roles/offline_compaction/files/compaction-files
+
+- name: Copy files of compaction-files directory
+  copy: src=compaction-files dest={{ instancepath }} owner={{ user }} group={{ user }} mode=0655
+
+- name: Copy all job templates
+  template: src=compatch.sh dest={{ instancepath }}/compaction-files
+
+- name: Starting Compaction
+  shell: "{{ instancepath }}/compaction-files/author-offline-compaction.sh {{ port }} {{ instance }} {{ instancepath }} {{ servicename }} {{ user }} {{ memargs }}"
+

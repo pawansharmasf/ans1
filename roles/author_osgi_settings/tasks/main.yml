@@ -1,0 +1,15 @@
+## Setup the author's OSGI console settings
+
+- name: Create directories
+  file: dest={{auth_dest}}/crx-quickstart/install state=directory
+
+- name: Copy files of "install" directory
+  template: src={{ item }} dest={{auth_dest}}/crx-quickstart/install/{{ item | basename | regex_replace('\.j2','') }} owner={{author_user}} group={{author_user}}
+  with_fileglob:
+  - ../templates/config/*.j2
+  tags: conf
+
+#- name: Copy files of "bin" directory
+#  template: src={{ item }} dest={{auth_dest}}/bin/{{ item | basename | regex_replace('\.j2','') }}
+#  with_fileglob:
+#  - ../templates/bin/*.j2

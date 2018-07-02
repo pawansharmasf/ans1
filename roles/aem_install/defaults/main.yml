@@ -1,0 +1,10 @@
+cq_port: 4502
+cq_home: /home/app/author
+cq_xmx: 4096m
+cq_runmode: ""
+aem_customername: Day Training
+aem_license: 16c35d55-6a3d-8a48-986c-9d1be7ebbf71
+aem_jarfile_path: /app/AEM_6.3_Quickstart.jar
+cq_user_name: crx
+cq_instance: author
+cq_startup_script_name: cq

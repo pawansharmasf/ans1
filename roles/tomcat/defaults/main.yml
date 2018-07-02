@@ -1,0 +1,3 @@
+---
+tomcat_src: files/tomcat
+tomcat_dest: /home/app

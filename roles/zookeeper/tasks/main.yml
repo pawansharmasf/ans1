@@ -1,0 +1,52 @@
+---
+
+ - name: Create target Directory if it not exists
+   file: path={{ zookeeper_dest }} state=directory mode=0755
+   when: install_zookeeper is defined
+
+ - name: Get zookeeper tarfile name
+   set_fact: 
+    zookeeper_tarfile: "{{latest_zookeeper_tarfile}}"
+   when: ( zookeeper_tarfile is not defined and install_zookeeper is defined )
+
+ - name: Zookeeper tarfile copying
+   copy: src={{ local_repo }}/{{zookeeper_tarfile}} dest={{zookeeper_dest}}
+   when: install_zookeeper is defined
+
+ - name: Extract zookeeper tarfile
+   unarchive: src={{zookeeper_dest}}/{{zookeeper_tarfile}} dest={{zookeeper_dest}} owner=solr group=solr remote_src=True
+   when: install_zookeeper is defined
+
+ - name: Find zookeeper directory name
+   shell: "echo {{zookeeper_tarfile}} | head -1 | rev | cut -d. -f3- | rev"
+   register: zookeeper_dir
+   when: install_zookeeper is defined
+
+ - name: Create zookeeper link
+   file: src={{zookeeper_dest}}/{{zookeeper_dir.stdout}} path={{zookeeper_dest}}/zookeeper state=link  owner=solr group=solr
+   when: install_zookeeper is defined
+
+ - name: Create data directory
+   file: path={{zookeeper_dest}}/zookeeper/data state=directory mode=0755  owner=solr group=solr
+   tags: copy_zookeeper_config
+
+ - name: Copy zookeeper id
+   template: src=myid.j2 dest={{zookeeper_dest}}/zookeeper/data/myid  owner=solr group=solr
+   tags: copy_zookeeper_config
+
+ - name: Copy zoo.cfg
+   template: src=zoo.cfg.j2 dest={{zookeeper_dest}}/zookeeper/conf/zoo.cfg owner=solr group=solr
+   tags: copy_zookeeper_config
+
+ - name: Copy startup scripts
+   template: src={{item.src}} dest={{item.dest}} mode="{{item.mode}}" owner=solr group=solr
+   with_items:
+    - { src: "input.properties.j2", dest: "{{zookeeper_dest}}/input.properties", mode: "0644" }  
+    - { src: "ZkOperations.sh.j2", dest: "{{zookeeper_dest}}/ZkOperations.sh", mode: "0755" }  
+
+ - name: Start zookeeper
+   shell: "source /etc/profile; {{zookeeper_dest}}/zookeeper/bin/zkServer.sh  start"
+   when: install_zookeeper is defined
+   become_user: solr
+   tags: start_zookeeper
+
