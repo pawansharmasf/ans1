@@ -1,0 +1,6 @@
+---
+- name: Author ssl config
+  hosts: author
+  roles:
+   - author_ssl
+

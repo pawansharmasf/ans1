@@ -1,0 +1,14 @@
+## Enable SSL on AEM
+
+- name: Create directories
+  file: dest={{auth_dest}}/crx-quickstart/ssl state=directory
+
+- name: Copy SSL Cert
+  copy : src=../templates/config/aem.keystore.j2 dest={{auth_dest}}/crx-quickstart/ssl/aem.keystore
+  tags: conf
+
+- name: Copy SSL Config
+  template: src={{ item }} dest={{auth_dest}}/crx-quickstart/launchpad/config/org/apache/felix/{{ item | basename | regex_replace('\.j2','') }}
+  with_fileglob:
+  - ../templates/config/http.config.j2
+  tags: conf

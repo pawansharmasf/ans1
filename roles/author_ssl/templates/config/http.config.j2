@@ -1,0 +1,44 @@
+org.apache.felix.http.context_path="/"
+org.apache.felix.http.debug=B"false"
+org.apache.felix.http.enable=B"true"
+org.apache.felix.http.host="0.0.0.0"
+org.apache.felix.http.jetty.acceptors=I"-1"
+org.apache.felix.http.jetty.headerBufferSize=I"16384"
+org.apache.felix.http.jetty.maxFormSize=I"204800"
+org.apache.felix.http.jetty.requestBufferSize=I"8192"
+org.apache.felix.http.jetty.responseBufferSize=I"24576"
+org.apache.felix.http.jetty.selectors=I"-1"
+org.apache.felix.http.jetty.sendServerHeader=B"false"
+org.apache.felix.http.jetty.threadpool.max=I"-1"
+org.apache.felix.http.mbeans=B"false"
+org.apache.felix.http.path_exclusions=[ \
+  "/system", \
+  ]
+org.apache.felix.http.session.timeout=I"0"
+org.apache.felix.http.timeout=I"60000"
+org.apache.felix.https.clientcertificate="none"
+org.apache.felix.https.enable=B"true"
+org.apache.felix.https.jetty.ciphersuites.excluded=[ \
+  "", \
+  ]
+org.apache.felix.https.jetty.ciphersuites.included=[ \
+  "", \
+  ]
+org.apache.felix.https.jetty.protocols.excluded=[ \
+  "", \
+  ]
+org.apache.felix.https.jetty.protocols.included=[ \
+  "", \
+  ]
+org.apache.felix.https.jetty.renegotiateAllowed=B"false"
+org.apache.felix.https.jetty.session.cookie.httpOnly=B"true"
+org.apache.felix.https.jetty.session.cookie.secure=B"false"
+org.apache.felix.https.keystore="{{auth_dest}}crx-quickstart/ssl/aem.keystore"
+org.apache.felix.https.keystore.key.password="redhat"
+org.apache.felix.https.keystore.password="redhat"
+org.apache.felix.https.truststore="{{auth_dest}}crx-quickstart/ssl/aem.keystore"
+org.apache.felix.https.truststore.password="redhat"
+org.apache.felix.proxy.load.balancer.connection.enable=B"false"
+org.osgi.service.http.port=I"{{http_port}}"
+org.osgi.service.http.port.secure=I"{{ssl_port}}"
+service.pid="org.apache.felix.http"

@@ -1,0 +1,5 @@
+auth_dest: /mnt/crx/author/
+author_user: crx
+ssl_port: 4504
+http_port: 4502
+felix_http_host: 0.0.0.0
